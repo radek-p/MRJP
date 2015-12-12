@@ -1,0 +1,113 @@
+------------------------------------------------------------
+-- Plik zawiera gramatykę języka Latte rozszerzoną o:
+--  - definicje klas,
+--  - typy tablicowe
+-- programs ------------------------------------------------
+
+entrypoints Program ;
+
+Program.   Program ::= [TopDef] ;
+
+FnTopDef.  TopDef ::= FnDef ;
+ClsTopDef. TopDef ::= ClsDef ;
+separator nonempty TopDef "" ;
+
+MetDef.    MemberDef ::= FnDef ;
+FieldDef.  MemberDef ::= VarDef ;
+separator nonempty MemberDef "" ;
+
+Arg. 	     Arg ::= Type Ident;
+separator  Arg "," ;
+
+FnDef.     FnDef  ::= Type Ident "(" [Arg] ")" Block ;
+ClsDef.    ClsDef ::= "class" Ident                 "{" [MemberDef] "}" ;
+ClsDefEx.  ClsDef ::= "class" Ident "extends" Ident "{" [MemberDef] "}" ;
+VarDef.    VarDef ::= Type [Item] ";" ;
+
+-- statements ----------------------------------------------
+
+Block.     Block ::= "{" [Stmt] "}" ;
+
+separator  Stmt "" ;
+Empty.     Stmt ::= ";" ;
+BStmt.     Stmt ::= Block ;
+Decl.      Stmt ::= VarDef ;
+
+	NoInit.    Item ::= Ident ; 
+	Init.      Item ::= Ident "=" Expr ;
+	separator nonempty Item "," ;
+
+Ass.       Stmt ::= LVal "=" Expr ";" ;
+Incr.      Stmt ::= LVal "++"  ";" ;
+Decr.      Stmt ::= LVal "--"  ";" ;
+Ret.       Stmt ::= "return" Expr ";" ;
+VRet.      Stmt ::= "return" ";" ;
+Cond.      Stmt ::= "if" "(" Expr ")" Stmt ;
+CondElse.  Stmt ::= "if" "(" Expr ")" Stmt "else" Stmt ;
+While.     Stmt ::= "while" "(" Expr ")" Stmt ;
+For.       Stmt ::= "for" "(" Type Ident ":" Expr ")" Stmt ;
+SExp.      Stmt ::= Expr  ";" ;
+
+-- Types ---------------------------------------------------
+
+-- Int.          Type ::= "int" ;
+-- Str.          Type ::= "string" ;
+-- Bool.         Type ::= "boolean" ;
+-- Void.         Type ::= "void" ;
+SimpleT.       Type ::= Ident ;
+ArrayT.        Type ::= Type "[]" ;
+internal FunT. Type ::= Type "(" [Type] ")" ;
+separator Type "," ;
+
+-- Expressions ---------------------------------------------
+
+-- EVar_.     Expr6 ::= Type ;     -- <--- Maybe this will be necessary,
+-- internal EVar. Expr ::= Ident ; -- <--- I'll wait for the answer from the lecturer...
+
+EVar.      Expr6 ::= Ident ;                         -- LVal
+ELitInt.   Expr6 ::= Integer ;
+ELitTrue.  Expr6 ::= "true" ;
+ELitFalse. Expr6 ::= "false" ;
+ELitNull.  Expr6 ::= "(" Type ")null" ;
+EApp.      Expr6 ::= Ident "(" [Expr] ")" ;
+EString.   Expr6 ::= String ;
+ArrAccess. Expr6 ::= Expr6 "[" Expr "]" ;            -- LVal
+ClsAccess. Expr6 ::= Expr6 "." Ident ;               -- LVal
+ClsApply.  Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
+ArrAlloc.  Expr5 ::= "new" Type "[" Expr "]" ;
+ClsAlloc.  Expr5 ::= "new" Type ;
+Neg.       Expr5 ::= "-" Expr6 ;
+Not.       Expr5 ::= "!" Expr6 ;
+EMul.      Expr4 ::= Expr4 MulOp Expr5 ;
+EAdd.      Expr3 ::= Expr3 AddOp Expr4 ;
+ERel.      Expr2 ::= Expr2 RelOp Expr3 ;
+EAnd.      Expr1 ::= Expr2 "&&"  Expr1 ;
+EOr.       Expr  ::= Expr1 "||"  Expr  ;
+coercions  Expr 7 ;
+separator  Expr "," ;
+
+-- LValues -------------------------------------------------
+
+LVar.      LVal ::= Ident ;
+LArrAcc.   LVal ::= Expr6 "[" Expr "]" ;
+LClsAcc.   LVal ::= Expr6 "." Ident ;
+
+-- operators -----------------------------------------------
+
+Plus.      AddOp ::= "+" ;
+Minus.     AddOp ::= "-" ;
+Times.     MulOp ::= "*" ;
+Div.       MulOp ::= "/" ;
+Mod.       MulOp ::= "%" ;
+LTH.       RelOp ::= "<" ;
+LE.        RelOp ::= "<=" ;
+GTH.       RelOp ::= ">" ;
+GE.        RelOp ::= ">=" ;
+EQU.       RelOp ::= "==" ;
+NE.        RelOp ::= "!=" ;
+
+-- comments ------------------------------------------------
+
+comment    "#" ;
+comment    "//" ;
+comment    "/*" "*/" ;

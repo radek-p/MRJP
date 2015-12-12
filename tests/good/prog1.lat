@@ -1,0 +1,10 @@
+class Test {
+    int[] val = new int [42];
+    Test tail = new Test;
+
+    int doSth(int arg, Test otherTest) {
+        return 42;
+    }
+}
+
+int main() { return 0; }
