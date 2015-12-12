@@ -9,12 +9,16 @@ import Syntax.AbsLatte
 
 import Control.Monad.Identity
 import Control.Monad.Trans (liftIO)
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.Writer
-import Control.Monad.Trans.Error
+import Control.Monad.State
+import Control.Monad.Writer
+import Control.Monad.Error
 
 import Data.Monoid
 import qualified Data.Set as S
+
+import System.IO
+
+import Frontend.Utility
 
 -- Testy do wykonania:
 --   - czy istnieje funkcja main,
@@ -35,13 +39,14 @@ instance Error CheckException where
   noMsg  = strMsg ""
 
 --type CheckMonad' r a = ReaderT r (ErrorT CheckException IO) a
-type CheckMonad' r a = ErrorT CheckException (ReaderT r IO) a
+type CheckMonad' s a = StateT s (ErrorT CheckException IO) a
 type CheckMonad      = CheckMonad' () ()
 
 checkProgram :: Program -> CheckMonad
 checkProgram p =
   mapM_ (\c -> c p) [
       checkFunctionNames
+      , checkVarDecl
     ]
 
 checkFunctionNames :: Program -> CheckMonad
@@ -62,22 +67,63 @@ checkFunctionNames (Program topdefs)
 --      idents  = [ ident | ClsTopDef (ClsDef retTyp (Ident ident) args body) <- topdefs ]
 --      idents' = S.fromList idents
 
-checkVarDecl :: Tree a -> CheckMonad
-checkVarDecl x = (withReaderT $ const S.empty) `mapErrorT` checkVarDecl' x
+checkVarDecl :: Program -> CheckMonad
+--checkVarDecl x = (withStateT $ const S.empty) `mapErrorT` checkVarDecl' 0 x
+checkVarDecl x = StateT (\u -> do (runStateT (checkVarDecl' 0 x) S.empty) >> return ((), ()))
 
---type CheckVarDeclMonad = CheckMonad' (S.Set Ident) ()
---checkVarDecl' :: Tree a -> CheckVarDeclMonad
---checkVarDecl' = composOpM_ processNode
---  where
---    processNode :: forall a. Tree a -> CheckVarDeclMonad
---    processNode x = case x of
---      Decl (VarDef _ items) -> mapErrorT (local (S.union (S.fromList [ ident | Init ident _ <- items ]))) $ checkVarDecl' x
---      FnDef _ _ args body   -> mapErrorT (local (S.union (S.fromList [ ident | Arg  _ ident <- args  ]))) $ (checkVarDecl' body >> checkVarDecl' x)
---      For _ ident _ body    -> mapErrorT (local (S.insert ident)) $ (checkVarDecl' body >> checkVarDecl' x)
---      EVar ident            -> do
---        env <- ask --(asks (S.member ident))
---        when (not $ ident `S.member` env) $ throwError (UninitializedVarUsage ident)
---      _                     -> checkVarDecl' x
+infixl 0 $$
+($$) :: Show a => Tree l -> CheckMonad' a b -> CheckMonad' a b
+x $$ m = do
+  env <- get
+  m `catchError` (\e -> do
+    liftIO (putStrLn ("In node:\n    " ++ printTree x ++ "\n  with env: " ++ show env))
+    throwError e)
+
+type CheckVarDeclMonad = CheckMonad' (S.Set Ident) ()
+checkVarDecl' :: Int -> Tree a -> CheckVarDeclMonad
+checkVarDecl' n = composOpM_ processNode
+  where
+    m :: Int
+    m = n + 1
+    prefix :: String
+    prefix = pref $ 2 * n
+    processNodeInner :: forall a. Tree a -> CheckVarDeclMonad
+    processNodeInner x@(Block stmt) = x $$ do
+        env <- get
+        checkVarDecl' m x
+        put env
+    processNodeInner x@(EVar ident) = x $$ do
+        present <- gets (S.member ident)
+        when (not present) $ throwError (UninitializedVarUsage ident)
+    processNodeInner x = x $$ (case x of
+          Decl (VarDef _ items) ->
+            modify (S.union (S.fromList [ ident | Init ident _ <- items ]))
+          FnDef _ _ args body   ->
+            modify (S.union (S.fromList [ ident | Arg  _ ident <- args  ]))
+          For _ ident _ body    ->
+            modify (S.insert ident)
+          _                     ->
+            return ()
+        ) >> checkVarDecl' m x
+    processNode :: forall a. Tree a -> CheckVarDeclMonad
+    processNode x = do
+      let ctr = unwords (take 5 (words (printTree x)))
+      let st  = prefix ++ "--> " ++ ctr
+      let l   = max 1 (35 - length st)
+      let st' = st ++ pref l
+      env <- get
+      liftIO $ putStr (st' ++ ":" ++ show env ++ "\n")
+      liftIO $ hFlush stdout
+
+      -- line <- liftIO getLine
+
+      res <- processNodeInner x
+
+      -- liftIO $ putStr (prefix ++ "<-- " ++ ctr)
+      -- liftIO $ hFlush stdout
+
+      -- line <- liftIO getLine
+      return res
 
 topDefCount :: Program -> Int
 topDefCount t = case t of

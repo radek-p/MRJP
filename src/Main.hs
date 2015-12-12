@@ -8,6 +8,7 @@ import System.Exit ( exitFailure, exitSuccess )
 
 import Frontend.StaticChecks
 import Frontend.Preprocessing
+import Frontend.Utility
 
 import Syntax.LexLatte
 import Syntax.ParLatte
@@ -17,8 +18,8 @@ import Syntax.AbsLatte
 import Syntax.ErrM
 
 import Data.Monoid
-import Control.Monad.Trans.Error
-import Control.Monad.Trans.Reader
+import Control.Monad.Error
+import Control.Monad.State
 
 type ParseFun = [Token] -> Err Program
 type Verbosity = Int
@@ -41,7 +42,7 @@ run v p s = let ts = myLLexer s in case p ts of
                           putStrLn "\n[ OK ] Parsing."
                           let tree' = preprocessProgram tree
                           putStrLn $ "After preprocessing:\n" ++ printTree tree'
-                          checkRes <- runReaderT (runErrorT (checkProgram tree')) ()
+                          checkRes <-  runErrorT (evalStateT (checkProgram tree') ())
                           case checkRes of
                             Left err -> print err >> exitFailure
                             Right () -> putStrLn "[ OK ] Program checked."

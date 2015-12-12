@@ -13,7 +13,8 @@ import Frontend.BuiltIns
 preprocessProgram :: Program -> Program
 preprocessProgram p =
   foldl (\p op -> op p) p [
-      deriveAllClassesFromObject
+      deriveAllClassesFromObject,
+      initializeAllVariables
     ]
 
 deriveAllClassesFromObject :: Tree a -> Tree a
