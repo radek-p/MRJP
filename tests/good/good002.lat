@@ -1,0 +1,4 @@
+int main() {
+    a[3].pole[42].x.y[7] = 0;
+    return 42;
+}

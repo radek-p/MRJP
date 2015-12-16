@@ -1,0 +1,24 @@
+class Main {
+    void foo(int[] arr) {
+        int x1 = 1;
+        while (!(x1 >= arr.length)) {
+            int x2 = arr[1];
+            int x3 = x1 - 1;
+
+            while (!(x3 < 0)) {
+                if (!(arr[x3] <= x2)) {
+                    arr[x3+1] = arr[x3];
+                    x3--;
+                } else {
+                    arr[x3+1] = x2;
+                    x1++;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+int main() {
+    return 42;
+}
