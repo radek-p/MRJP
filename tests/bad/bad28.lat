@@ -1,0 +1,9 @@
+class A extends B {}
+class B extends A {}
+
+class C extends D {}
+class D extends C {}
+
+class E {}
+
+int main() { return 42; }

@@ -1,15 +1,14 @@
 {-# LANGUAGE GADTs, KindSignatures, DataKinds #-}
 module Main where
 
-
 import System.IO ( stdin, hGetContents )
 import System.Environment ( getArgs, getProgName )
 import System.Exit ( exitFailure, exitSuccess )
+import Control.Monad.Error
+import Control.Monad.State
 
-import Frontend.StaticChecks
-import Frontend.Preprocessing
-import Frontend.Utility
-
+import Frontend.StaticChecks.Runner
+import Frontend.Preprocessing.Runner
 import Syntax.LexLatte
 import Syntax.ParLatte
 import Syntax.SkelLatte
@@ -17,9 +16,6 @@ import Syntax.PrintLatte
 import Syntax.AbsLatte
 import Syntax.ErrM
 
-import Data.Monoid
-import Control.Monad.Error
-import Control.Monad.State
 
 type ParseFun = [Token] -> Err Program
 type Verbosity = Int
@@ -34,20 +30,24 @@ runFile v p f = putStrLn f >> readFile f >>= run v p
 
 run :: Verbosity -> ParseFun -> String -> IO ()
 run v p s = let ts = myLLexer s in case p ts of
-           Bad s    -> do putStrLn "\n[FAIL] Parsing."
-                          putStrLn "Error:"
-                          putStrLn s
-                          exitFailure
-           Ok  tree@(Program _) -> do
-                          putStrLn "\n[ OK ] Parsing."
-                          let tree' = preprocessProgram tree
-                          putStrLn $ "After preprocessing:\n" ++ printTree tree'
-                          checkRes <-  runErrorT (evalStateT (checkProgram tree') ())
-                          case checkRes of
-                            Left err -> print err >> exitFailure
-                            Right () -> putStrLn "[ OK ] Program checked."
-                          exitSuccess
-           _ -> putStrLn "Wrong type." >> exitFailure
+           Bad s    -> do
+              putStrLn "\n[FAIL] Parsing."
+              putStrLn "Error:"
+              putStrLn s
+              exitFailure
+           Ok  result ->
+              case result of
+                Program {} -> do
+                  let tree = result
+                  putStrLn "\n[ OK ] Parsing."
+                  let tree' = preprocessProgram tree
+                  putStrLn $ "After preprocessing:\n" ++ printTree tree'
+                  checkRes <-  runErrorT (evalStateT (checkProgram tree') ())
+                  case checkRes of
+                    Left err -> print err >> exitFailure
+                    Right () -> putStrLn "[ OK ] Program checked."
+                  exitSuccess
+                _ -> putStrLn "Wrong type." >> exitFailure
 
 showTree :: Int -> Program -> IO ()
 showTree v tree = do

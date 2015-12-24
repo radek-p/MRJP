@@ -14,7 +14,7 @@ separator nonempty TopDef "" ;
 
 MetDef.    MemberDef ::= FnDef ;
 FieldDef.  MemberDef ::= VarDef ;
-separator nonempty MemberDef "" ;
+separator MemberDef "" ;
 
 Arg. 	     Arg ::= Type Ident;
 separator  Arg "," ;
@@ -61,9 +61,6 @@ separator Type "," ;
 
 -- Expressions ---------------------------------------------
 
--- EVar_.     Expr6 ::= Type ;     -- <--- Maybe this will be necessary,
--- internal EVar. Expr ::= Ident ; -- <--- I'll wait for the answer from the lecturer...
-
 EVar.      Expr6 ::= Ident ;                         -- LVal
 ELitInt.   Expr6 ::= Integer ;
 ELitTrue.  Expr6 ::= "true" ;
@@ -74,6 +71,7 @@ EString.   Expr6 ::= String ;
 ArrAccess. Expr6 ::= Expr6 "[" Expr "]" ;            -- LVal
 ClsAccess. Expr6 ::= Expr6 "." Ident ;               -- LVal
 ClsApply.  Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
+
 ArrAlloc.  Expr5 ::= "new" Type "[" Expr "]" ;
 ClsAlloc.  Expr5 ::= "new" Type ;
 Neg.       Expr5 ::= "-" Expr6 ;

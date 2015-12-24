@@ -1,16 +1,11 @@
 {-# LANGUAGE GADTs, KindSignatures, Rank2Types, DataKinds, PolyKinds, FlexibleContexts #-}
-
-module Frontend.BuiltIns where
+module Language.BuiltIns where
 
 import Control.Lens
+import qualified Data.Map as M
 
-import Syntax.LexLatte
-import Syntax.ParLatte
-import Syntax.SkelLatte
-import Syntax.PrintLatte
 import Syntax.AbsLatte
 
-import qualified Data.Map as M
 
 objectClassIdent :: Ident
 objectClassIdent = Ident "_Object"
@@ -30,10 +25,12 @@ defaultValue t
 
 data Variable
   = Variable Type Ident
+  deriving Show
 
 data Function
   = Function  Type Ident [Variable] Block
   | BuiltInFn Type Ident
+  deriving Show
 
 data Class
   = SubClass Ident           -- name
@@ -41,12 +38,16 @@ data Class
              (Env' Variable) -- fields
              (Env' Function) -- methods
   | Object                   -- superclass of all classes
+  deriving Show
 
 
 class HasIdent a where
   getIdent :: a -> Ident
   getIdentStr :: a -> String
   getIdentStr x = let (Ident str) = getIdent x in str
+
+--instance HasIdent Ident where
+--  getIdent = id
 
 instance HasIdent Variable where
   getIdent (Variable _ i) = i

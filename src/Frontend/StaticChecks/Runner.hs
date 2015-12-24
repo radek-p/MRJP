@@ -1,24 +1,21 @@
 {-# LANGUAGE GADTs, KindSignatures, Rank2Types, DataKinds, PolyKinds, FlexibleContexts #-}
-module Frontend.StaticChecks where
-
-import Syntax.LexLatte
-import Syntax.ParLatte
-import Syntax.SkelLatte
-import Syntax.PrintLatte
-import Syntax.AbsLatte
+module Frontend.StaticChecks.Runner where
 
 import Control.Monad.Identity
-import Control.Monad.Trans (liftIO)
 import Control.Monad.State
-import Control.Monad.Writer
 import Control.Monad.Error
-
-import Data.Monoid
-import qualified Data.Set as S
-
+import qualified Data.Maybe as MB
+import qualified Data.Graph as G
+import qualified Data.Tree  as T
+import qualified Data.Set   as S
+import qualified Data.Map   as M
 import System.IO
 
-import Frontend.Utility
+import Syntax.AbsLatte
+import Language.BuiltIns
+import Frontend.Utility.Other
+import Frontend.Utility.PrettyPrinting
+
 
 -- Testy do wykonania:
 --   - czy istnieje funkcja main,
@@ -27,27 +24,34 @@ import Frontend.Utility
 --   - czy zmienne zadeklarowane przed użyciem,
 --   - czy wyrażenia mają poprawny typ,
 
+-- Fazy sprawdzania:
+--   - parsowanie,
+--   - sprawdzanie widoczności,
+--   - analiza typów.
+
 data CheckException
   = OtherException String
   | FunctionNamesNotUnique
   | MainFunctionNotDefined
   | UninitializedVarUsage Ident
+  | CyclicInherritance [[Ident]]
     deriving Show
 
 instance Error CheckException where
   strMsg = OtherException
   noMsg  = strMsg ""
 
---type CheckMonad' r a = ReaderT r (ErrorT CheckException IO) a
 type CheckMonad' s a = StateT s (ErrorT CheckException IO) a
 type CheckMonad      = CheckMonad' () ()
 
 checkProgram :: Program -> CheckMonad
-checkProgram p =
+checkProgram p = do
   mapM_ (\c -> c p) [
       checkFunctionNames
-      , checkVarDecl
+--      , checkVarDecl
     ]
+  cls <- collectClasses p
+  liftIO $ putStrLn (show cls)
 
 checkFunctionNames :: Program -> CheckMonad
 checkFunctionNames (Program topdefs)
@@ -58,17 +62,50 @@ checkFunctionNames (Program topdefs)
       idents  = [ ident | FnTopDef (FnDef retTyp (Ident ident) args body) <- topdefs ]
       idents' = S.fromList idents
 
---checkClassNames :: Program -> CheckMonad
---checkClassNames (Program topdefs)
---  | length idents /= S.size idents' = throwError FunctionNamesNotUnique
---  | not $ S.member "main" idents'   = throwError MainFunctionNotDefined
---  | otherwise                       = return ()
---    where
---      idents  = [ ident | ClsTopDef (ClsDef retTyp (Ident ident) args body) <- topdefs ]
---      idents' = S.fromList idents
+
+collectClasses :: Program -> CheckMonad' () [Class]
+collectClasses (Program topdefs) =
+  let
+    trees          = G.components g
+    topClassVertex = MB.fromJust $ k2v objectClassIdent -- TODO do not use fromJust
+  in do
+    case trees of
+      []   -> error "This list shall never be empty"
+      [cc] -> do
+        let [tree] = G.dfs (G.transposeG g) [topClassVertex]
+        let clsTree = fmap getCls tree
+        return $ T.flatten (updateCls clsTree)
+      _    -> do
+        let cycles  = [ lst   | lst <- map T.flatten trees, topClassVertex `notElem` lst ]
+        let classes = [ [ ident | (_, ident, _) <- map v2n cycle ] | cycle <- cycles ]
+        throwError (CyclicInherritance classes)
+      where
+        getVEnv :: [MemberDef] -> Env' Variable
+        getVEnv members =
+          M.fromList [ (ident, Variable t ident) |
+                       (FieldDef (VarDef t items)) <- members,
+                       (NoInit ident)              <- items    ]
+        getFEnv :: [MemberDef] -> Env' Function
+        getFEnv members =
+          M.fromList [ (ident, Function t ident [Variable t i | (Arg t i) <- args] body) |
+                        MetDef (FnDef t ident args body) <- members ]
+        topClass = [ (Object, objectClassIdent, []) ]
+        edges = [ (SubClass name Object (getVEnv members) (getFEnv members), name, [supName]) |
+                  ClsTopDef (ClsDefEx name supName members) <- topdefs ] ++ topClass
+        (g, v2n, k2v) = G.graphFromEdges edges
+        getCls v = let (c, _, _) = v2n v in c
+        updateCls :: T.Tree Class -> T.Tree Class
+        updateCls (T.Node super subs) =
+          let
+            children = map (\x -> case x of
+                T.Node (SubClass a _ b c) sc -> T.Node (SubClass a super b c) sc
+                _                            -> error "Internal error"
+              ) subs
+          in
+            T.Node super (map updateCls children)
+
 
 checkVarDecl :: Program -> CheckMonad
---checkVarDecl x = (withStateT $ const S.empty) `mapErrorT` checkVarDecl' 0 x
 checkVarDecl x = StateT (\u -> do (runStateT (checkVarDecl' 0 x) S.empty) >> return ((), ()))
 
 infixl 0 $$
@@ -100,7 +137,7 @@ checkVarDecl' n = composOpM_ processNode
             modify (S.union (S.fromList [ ident | Init ident _ <- items ]))
           FnDef _ _ args body   ->
             modify (S.union (S.fromList [ ident | Arg  _ ident <- args  ]))
-          For _ ident _ body    ->
+          For _ ident _ _       ->
             modify (S.insert ident)
           _                     ->
             return ()
@@ -114,41 +151,6 @@ checkVarDecl' n = composOpM_ processNode
       env <- get
       liftIO $ putStr (st' ++ ":" ++ show env ++ "\n")
       liftIO $ hFlush stdout
-
-      -- line <- liftIO getLine
-
       res <- processNodeInner x
-
-      -- liftIO $ putStr (prefix ++ "<-- " ++ ctr)
-      -- liftIO $ hFlush stdout
-
-      -- line <- liftIO getLine
       return res
-
-topDefCount :: Program -> Int
-topDefCount t = case t of
-  Program topdefs -> length topdefs
-
-sumIntLit :: (forall a. Tree a -> Int)
-sumIntLit t = case t of
-  ELitInt _ -> 1
-  _         -> integerLiteralCount t
-
-integerLiteralCount :: Tree a -> Int
-integerLiteralCount =
-  composOpFold 0 (+) sumIntLit
-
-increaseIntegers :: Tree a -> Tree a
-increaseIntegers = composOp processNode
-  where
-    processNode :: forall a. Tree a -> Tree a
-    processNode x = case x of
-      ELitInt n -> ELitInt $ n+1
-      _         -> increaseIntegers x
-
---mts :: Tree a -> IO (Tree a)
---mts = compos return (\mf ma -> do { f <- mf; a <- ma; putStrLn "a"; return (f a) }) (\x -> do { putStrLn "<>"; (case x of {ELitInt n -> print n; _ -> return ()} ); mts x })
-
-
-
 

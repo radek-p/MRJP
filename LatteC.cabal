@@ -7,3 +7,4 @@ executable LatteC
   main-is:         Main.hs
   hs-source-dirs:  src
   build-depends:   base, mtl, array, containers, lens
+  ghc-options:     -Wall

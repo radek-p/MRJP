@@ -1,18 +1,13 @@
 {-# LANGUAGE GADTs, KindSignatures, Rank2Types, DataKinds, PolyKinds, FlexibleContexts #-}
+module Frontend.Preprocessing.Runner where
 
-module Frontend.Preprocessing where
-
-import Syntax.LexLatte
-import Syntax.ParLatte
-import Syntax.SkelLatte
-import Syntax.PrintLatte
 import Syntax.AbsLatte
+import Language.BuiltIns
 
-import Frontend.BuiltIns
 
 preprocessProgram :: Program -> Program
 preprocessProgram p =
-  foldl (\p op -> op p) p [
+  foldl (\x op -> op x) p [
       deriveAllClassesFromObject,
       initializeAllVariables
     ]
@@ -31,6 +26,10 @@ initializeAllVariables = composOp processNode
     processNode :: forall a. Tree a -> Tree a
     processNode x = case x of
       VarDef t items -> VarDef t (initialize t items)
+      ClsDefEx a b members ->
+        ClsDefEx a b (map
+          (\x' -> case x' of { FieldDef _ -> x'; _ -> initializeAllVariables x' })
+          members)
       _              -> initializeAllVariables x
     initialize :: Type -> [Item] -> [Item]
     initialize t =
