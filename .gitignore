@@ -76,5 +76,6 @@ src/Frontend/Parser/ParLatte.y
 src/Frontend/Parser/PrintLatte.hs
 src/Frontend/Parser/SkelLatte.hs
 src/Frontend/Parser/TestLatte.hs
-src/Makefile
+src/Frontend/Parser/DocLatte.tex
+src/Frontend/Parser/DocLatte.txt
 
