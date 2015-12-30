@@ -1,58 +1,57 @@
-{-# LANGUAGE GADTs, KindSignatures, DataKinds #-}
+{-# LANGUAGE GADTs #-}
 module Main where
 
 import System.IO ( stdin, hGetContents )
-import System.Environment ( getArgs, getProgName )
+import System.Environment ( getArgs )
 import System.Exit ( exitFailure, exitSuccess )
 import Control.Monad.Error
 import Control.Monad.State
 
-import Frontend.StaticChecks.Runner
-import Frontend.Preprocessing.Runner
-import Syntax.LexLatte
-import Syntax.ParLatte
-import Syntax.SkelLatte
-import Syntax.PrintLatte
-import Syntax.AbsLatte
-import Syntax.ErrM
+import Frontend.SemanticAnalysis.Runner
+import Frontend.Parser.ParLatte
+import Frontend.Parser.PrintLatte
+import Frontend.Parser.AbsLatte
+import Frontend.Parser.ErrM
 
 
-type ParseFun = [Token] -> Err Program
 type Verbosity = Int
 
-myLLexer = myLexer
-
 putStrV :: Verbosity -> String -> IO ()
-putStrV v s = if v > 1 then putStrLn s else return ()
+putStrV v s = when (v > 1) $ putStrLn s
 
-runFile :: Verbosity -> ParseFun -> FilePath -> IO ()
-runFile v p f = putStrLn f >> readFile f >>= run v p
+runFile :: Verbosity -> FilePath -> IO ()
+runFile v f = putStrLn f >> readFile f >>= run v
 
-run :: Verbosity -> ParseFun -> String -> IO ()
-run v p s = let ts = myLLexer s in case p ts of
-           Bad s    -> do
-              putStrLn "\n[FAIL] Parsing."
-              putStrLn "Error:"
-              putStrLn s
-              exitFailure
-           Ok  result ->
-              case result of
-                Program {} -> do
-                  let tree = result
-                  putStrLn "\n[ OK ] Parsing."
-                  let tree' = preprocessProgram tree
-                  putStrLn $ "After preprocessing:\n" ++ printTree tree'
-                  checkRes <-  runErrorT (evalStateT (checkProgram tree') ())
-                  case checkRes of
-                    Left err -> print err >> exitFailure
-                    Right () -> putStrLn "[ OK ] Program checked."
-                  exitSuccess
-                _ -> putStrLn "Wrong type." >> exitFailure
+run :: Verbosity -> String -> IO ()
+run _ programText = do
+  program <- parseProgram programText
+  compileProgram program
+  exitSuccess
+
+parseProgram :: String -> IO Program
+parseProgram programText = do
+  let tokens = myLexer programText
+  let parsingResult = pProgram tokens
+  case parsingResult of
+    Bad s     -> putStrLn "\n[FAIL] Parsing. Error: " >> putStrLn s >> exitFailure
+    Ok result -> case result of {
+      Program{} -> return result;
+      _         -> putStrLn "Wrong type." >> exitFailure
+    }
+
+compileProgram :: Program -> IO ()
+compileProgram tree = do
+  putStrLn "\n[ OK ] Parsing."
+  putStrLn $ "Parsed:\n" ++ printTree tree
+  checkRes <-  runErrorT (evalStateT (checkProgram tree) ())
+  case checkRes of
+    Left err -> print err >> exitFailure
+    Right () -> putStrLn "[ OK ] Program checked."
 
 showTree :: Int -> Program -> IO ()
 showTree v tree = do
-      putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
-      putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
+  putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
+  putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
 
 usage :: IO ()
 usage = do
@@ -70,9 +69,9 @@ main = do
   args <- getArgs
   case args of
     ["--help"] -> usage
-    [] -> hGetContents stdin >>= run 2 pProgram
-    "-s":fs -> mapM_ (runFile 0 pProgram) fs
-    fs -> mapM_ (runFile 2 pProgram) fs
+    [] -> getContents >>= run 2
+    "-s":fs -> mapM_ (runFile 0) fs
+    fs -> mapM_ (runFile 2) fs
 
 
 

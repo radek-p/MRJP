@@ -66,6 +66,15 @@ crashlytics-build.properties
 
 bin/LatteC
 
-src/Syntax
+src/Frontend/Parser/AbsLatte.hs
+src/Frontend/Parser/ComposOp.hs
+src/Frontend/Parser/ErrM.hs
+src/Frontend/Parser/LexLatte.hs
+src/Frontend/Parser/LexLatte.x
+src/Frontend/Parser/ParLatte.hs
+src/Frontend/Parser/ParLatte.y
+src/Frontend/Parser/PrintLatte.hs
+src/Frontend/Parser/SkelLatte.hs
+src/Frontend/Parser/TestLatte.hs
 src/Makefile
 

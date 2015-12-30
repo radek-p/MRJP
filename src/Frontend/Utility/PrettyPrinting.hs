@@ -1,8 +1,8 @@
 {-# LANGUAGE GADTs #-}
 module Frontend.Utility.PrettyPrinting where
 
-import qualified Syntax.PrintLatte as P
-import Syntax.AbsLatte
+import qualified Frontend.Parser.PrintLatte as P
+import Frontend.Parser.AbsLatte
 
 
 class Printable a where

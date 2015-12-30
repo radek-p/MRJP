@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs, KindSignatures, Rank2Types, DataKinds, PolyKinds, FlexibleContexts #-}
-module Frontend.StaticChecks.Runner where
+module Frontend.SemanticAnalysis.Runner where
 
+import Prelude hiding (cycle)
 import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Error
@@ -11,38 +12,13 @@ import qualified Data.Set   as S
 import qualified Data.Map   as M
 import System.IO
 
-import Syntax.AbsLatte
 import Language.BuiltIns
+import Frontend.Parser.AbsLatte
 import Frontend.Utility.Other
 import Frontend.Utility.PrettyPrinting
+import Frontend.SemanticAnalysis.Monad
+import Frontend.SemanticAnalysis.CheckError
 
-
--- Testy do wykonania:
---   - czy istnieje funkcja main,
---   - czy nazwy funkcji są jednoznaczne,
---   - czy nazwy zmiennych są jednoznaczne,
---   - czy zmienne zadeklarowane przed użyciem,
---   - czy wyrażenia mają poprawny typ,
-
--- Fazy sprawdzania:
---   - parsowanie,
---   - sprawdzanie widoczności,
---   - analiza typów.
-
-data CheckException
-  = OtherException String
-  | FunctionNamesNotUnique
-  | MainFunctionNotDefined
-  | UninitializedVarUsage Ident
-  | CyclicInherritance [[Ident]]
-    deriving Show
-
-instance Error CheckException where
-  strMsg = OtherException
-  noMsg  = strMsg ""
-
-type CheckMonad' s a = StateT s (ErrorT CheckException IO) a
-type CheckMonad      = CheckMonad' () ()
 
 checkProgram :: Program -> CheckMonad
 checkProgram p = do
@@ -59,7 +35,7 @@ checkFunctionNames (Program topdefs)
   | not $ S.member "main" idents'   = throwError MainFunctionNotDefined
   | otherwise                       = return ()
     where
-      idents  = [ ident | FnTopDef (FnDef retTyp (Ident ident) args body) <- topdefs ]
+      idents  = [ ident | FnTopDef (FnDef _ (Ident ident) _ _) <- topdefs ]
       idents' = S.fromList idents
 
 
@@ -71,7 +47,7 @@ collectClasses (Program topdefs) =
   in do
     case trees of
       []   -> error "This list shall never be empty"
-      [cc] -> do
+      [_] -> do
         let [tree] = G.dfs (G.transposeG g) [topClassVertex]
         let clsTree = fmap getCls tree
         return $ T.flatten (updateCls clsTree)
@@ -87,7 +63,7 @@ collectClasses (Program topdefs) =
                        (NoInit ident)              <- items    ]
         getFEnv :: [MemberDef] -> Env' Function
         getFEnv members =
-          M.fromList [ (ident, Function t ident [Variable t i | (Arg t i) <- args] body) |
+          M.fromList [ (ident, Function t ident [Variable typ i | (Arg typ i) <- args] body) |
                         MetDef (FnDef t ident args body) <- members ]
         topClass = [ (Object, objectClassIdent, []) ]
         edges = [ (SubClass name Object (getVEnv members) (getFEnv members), name, [supName]) |
@@ -106,7 +82,7 @@ collectClasses (Program topdefs) =
 
 
 checkVarDecl :: Program -> CheckMonad
-checkVarDecl x = StateT (\u -> do (runStateT (checkVarDecl' 0 x) S.empty) >> return ((), ()))
+checkVarDecl x = StateT (\_ -> (runStateT (checkVarDecl' 0 x) S.empty) >> return ((), ()))
 
 infixl 0 $$
 ($$) :: Show a => Tree l -> CheckMonad' a b -> CheckMonad' a b
@@ -125,7 +101,7 @@ checkVarDecl' n = composOpM_ processNode
     prefix :: String
     prefix = pref $ 2 * n
     processNodeInner :: forall a. Tree a -> CheckVarDeclMonad
-    processNodeInner x@(Block stmt) = x $$ do
+    processNodeInner x@(Block _) = x $$ do
         env <- get
         checkVarDecl' m x
         put env
@@ -135,7 +111,7 @@ checkVarDecl' n = composOpM_ processNode
     processNodeInner x = x $$ (case x of
           Decl (VarDef _ items) ->
             modify (S.union (S.fromList [ ident | Init ident _ <- items ]))
-          FnDef _ _ args body   ->
+          FnDef _ _ args _   ->
             modify (S.union (S.fromList [ ident | Arg  _ ident <- args  ]))
           For _ ident _ _       ->
             modify (S.insert ident)

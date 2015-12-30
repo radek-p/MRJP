@@ -1,14 +1,17 @@
-{-# LANGUAGE GADTs, KindSignatures, Rank2Types, DataKinds, PolyKinds, FlexibleContexts #-}
+{-# LANGUAGE GADTs, KindSignatures, Rank2Types, FlexibleContexts, TypeSynonymInstances, FlexibleInstances #-}
 module Language.BuiltIns where
 
 import Control.Lens
 import qualified Data.Map as M
 
-import Syntax.AbsLatte
+import Frontend.Parser.AbsLatte
 
 
 objectClassIdent :: Ident
 objectClassIdent = Ident "_Object"
+
+mainClassIdent :: Ident
+mainClassIdent = Ident "_Main"
 
 -- Built in types
 tInt, tBool, tString, tVoid :: Type
@@ -46,8 +49,8 @@ class HasIdent a where
   getIdentStr :: a -> String
   getIdentStr x = let (Ident str) = getIdent x in str
 
---instance HasIdent Ident where
---  getIdent = id
+instance HasIdent Ident where
+  getIdent = id
 
 instance HasIdent Variable where
   getIdent (Variable _ i) = i
