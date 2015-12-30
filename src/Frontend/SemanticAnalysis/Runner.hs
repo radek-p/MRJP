@@ -4,7 +4,7 @@ module Frontend.SemanticAnalysis.Runner where
 import Prelude hiding (cycle)
 import Control.Monad.Identity
 import Control.Monad.State
-import Control.Monad.Error
+import Control.Monad.Except
 import qualified Data.Maybe as MB
 import qualified Data.Graph as G
 import qualified Data.Tree  as T

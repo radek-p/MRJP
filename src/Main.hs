@@ -1,10 +1,9 @@
 {-# LANGUAGE GADTs #-}
 module Main where
 
-import System.IO ( stdin, hGetContents )
 import System.Environment ( getArgs )
 import System.Exit ( exitFailure, exitSuccess )
-import Control.Monad.Error
+import Control.Monad.Except
 import Control.Monad.State
 
 import Frontend.SemanticAnalysis.Runner
@@ -34,16 +33,13 @@ parseProgram programText = do
   let parsingResult = pProgram tokens
   case parsingResult of
     Bad s     -> putStrLn "\n[FAIL] Parsing. Error: " >> putStrLn s >> exitFailure
-    Ok result -> case result of {
-      Program{} -> return result;
-      _         -> putStrLn "Wrong type." >> exitFailure
-    }
+    Ok result -> return result
 
 compileProgram :: Program -> IO ()
 compileProgram tree = do
   putStrLn "\n[ OK ] Parsing."
   putStrLn $ "Parsed:\n" ++ printTree tree
-  checkRes <-  runErrorT (evalStateT (checkProgram tree) ())
+  checkRes <-  runExceptT (evalStateT (checkProgram tree) ())
   case checkRes of
     Left err -> print err >> exitFailure
     Right () -> putStrLn "[ OK ] Program checked."

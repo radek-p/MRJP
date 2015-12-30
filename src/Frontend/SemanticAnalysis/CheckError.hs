@@ -1,6 +1,6 @@
 module Frontend.SemanticAnalysis.CheckError where
 
-import Control.Monad.Error
+--import Control.Monad.Error
 
 import Frontend.Parser.AbsLatte
 
@@ -13,6 +13,6 @@ data CheckError
   | CyclicInherritance [[Ident]]
     deriving Show
 
-instance Error CheckError where
-  strMsg = OtherException
-  noMsg  = strMsg ""
+--instance Error CheckError where
+--  strMsg = OtherException
+--  noMsg  = strMsg ""
