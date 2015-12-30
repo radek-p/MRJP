@@ -18,15 +18,16 @@ import Frontend.Utility.PrettyPrinting
 import Frontend.SemanticAnalysis.Monad
 import Frontend.SemanticAnalysis.CheckError
 
+import Frontend.SemanticAnalysis.Checks.CyclicInherritance
+
 
 checkProgram :: Program -> CheckMonad
 checkProgram p = do
   mapM_ (\c -> c p) [
+      checkCI,
       checkFunctionNames
 --      , checkVarDecl
     ]
-  cls <- collectClasses p
-  liftIO $ putStrLn (show cls)
 
 checkFunctionNames :: Program -> CheckMonad
 checkFunctionNames (Program topdefs)

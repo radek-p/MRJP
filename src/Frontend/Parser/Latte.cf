@@ -2,9 +2,6 @@
 -- Plik zawiera gramatykę języka Latte rozszerzoną o:
 --  - definicje klas,
 --  - typy tablicowe
--- tokens --------------------------------------------------
--- Maybe add this in next version?
--- position token PIdent (letter (letter|digit|'_'|'\'')*) ;
 -- programs ------------------------------------------------
 
 entrypoints Program ;
