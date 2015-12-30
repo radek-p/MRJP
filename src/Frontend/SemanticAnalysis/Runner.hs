@@ -4,7 +4,6 @@ module Frontend.SemanticAnalysis.Runner where
 import Prelude hiding (cycle)
 import Control.Monad.Identity
 import Control.Monad.State
-import Control.Monad.Except
 import qualified Data.Maybe as MB
 import qualified Data.Graph as G
 import qualified Data.Tree  as T
@@ -31,8 +30,8 @@ checkProgram p = do
 
 checkFunctionNames :: Program -> CheckMonad
 checkFunctionNames (Program topdefs)
-  | length idents /= S.size idents' = throwError FunctionNamesNotUnique
-  | not $ S.member "main" idents'   = throwError MainFunctionNotDefined
+  | length idents /= S.size idents' = throwCheckError FunctionNamesNotUnique
+  | not $ S.member "main" idents'   = throwCheckError MainFunctionNotDefined
   | otherwise                       = return ()
     where
       idents  = [ ident | FnTopDef (FnDef _ (Ident ident) _ _) <- topdefs ]
@@ -54,7 +53,7 @@ collectClasses (Program topdefs) =
       _    -> do
         let cycles  = [ lst   | lst <- map T.flatten trees, topClassVertex `notElem` lst ]
         let classes = [ [ ident | (_, ident, _) <- map v2n cycle ] | cycle <- cycles ]
-        throwError (CyclicInherritance classes)
+        throwCheckError (CyclicInherritance classes)
       where
         getVEnv :: [MemberDef] -> Env' Variable
         getVEnv members =
@@ -84,14 +83,6 @@ collectClasses (Program topdefs) =
 checkVarDecl :: Program -> CheckMonad
 checkVarDecl x = StateT (\_ -> (runStateT (checkVarDecl' 0 x) S.empty) >> return ((), ()))
 
-infixl 0 $$
-($$) :: Show a => Tree l -> CheckMonad' a b -> CheckMonad' a b
-x $$ m = do
-  env <- get
-  m `catchError` (\e -> do
-    liftIO (putStrLn ("In node:\n    " ++ printTree x ++ "\n  with env: " ++ show env))
-    throwError e)
-
 type CheckVarDeclMonad = CheckMonad' (S.Set Ident) ()
 checkVarDecl' :: Int -> Tree a -> CheckVarDeclMonad
 checkVarDecl' n = composOpM_ processNode
@@ -101,14 +92,14 @@ checkVarDecl' n = composOpM_ processNode
     prefix :: String
     prefix = pref $ 2 * n
     processNodeInner :: forall a. Tree a -> CheckVarDeclMonad
-    processNodeInner x@(Block _) = x $$ do
+    processNodeInner x@(Block _) = (CEContext x) $$ do
         env <- get
         checkVarDecl' m x
         put env
-    processNodeInner x@(EVar ident) = x $$ do
+    processNodeInner x@(EVar ident) = (CEContext x) $$ do
         present <- gets (S.member ident)
-        when (not present) $ throwError (UninitializedVarUsage ident)
-    processNodeInner x = x $$ (case x of
+        when (not present) $ throwCheckError (UninitializedVarUsage ident)
+    processNodeInner x = (CEContext x) $$ (case x of
           Decl (VarDef _ items) ->
             modify (S.union (S.fromList [ ident | Init ident _ <- items ]))
           FnDef _ _ args _   ->
