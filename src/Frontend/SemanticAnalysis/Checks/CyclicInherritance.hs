@@ -14,7 +14,7 @@ import Frontend.SemanticAnalysis.CheckError
 
 data Class' = Class' Ident Ident
 
-checkCI :: Program -> CheckMonad' a ()
+checkCI :: Program -> CheckM' a ()
 checkCI (Program topdefs) = do
   let trees          = G.components g
   let topClassVertex = MB.fromJust $ k2v objectClassIdent

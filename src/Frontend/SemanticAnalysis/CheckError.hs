@@ -1,7 +1,5 @@
-{-# LANGUAGE GADTs, KindSignatures, Rank2Types, DataKinds, PolyKinds, FlexibleContexts #-}
+{-# LANGUAGE GADTs, KindSignatures, Rank2Types #-}
 module Frontend.SemanticAnalysis.CheckError where
-
---import Control.Monad.Error
 
 import Frontend.Parser.AbsLatte
 import Frontend.Utility.PrettyPrinting
@@ -10,9 +8,11 @@ import Frontend.Utility.PrettyPrinting
 data CEType
   = OtherException String -- required by Error class
   | FunctionNamesNotUnique
+  | ClassNamesNotUnique
   | MainFunctionNotDefined
   | UninitializedVarUsage Ident
   | CyclicInherritance [[Ident]]
+  | ClassFieldInitialised
     deriving Show
 
 data CEContext

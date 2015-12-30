@@ -1,7 +1,6 @@
 {-# LANGUAGE GADTs, KindSignatures, Rank2Types, FlexibleContexts, TypeSynonymInstances, FlexibleInstances #-}
 module Language.BuiltIns where
 
-import Control.Lens
 import qualified Data.Map as M
 
 import Frontend.Parser.AbsLatte
@@ -9,9 +8,6 @@ import Frontend.Parser.AbsLatte
 
 objectClassIdent :: Ident
 objectClassIdent = Ident "_Object"
-
-mainClassIdent :: Ident
-mainClassIdent = Ident "_Main"
 
 -- Built in types
 tInt, tBool, tString, tVoid :: Type
@@ -24,6 +20,42 @@ defaultValue t
   | t == tString = EString ""
   | t == tVoid   = error "Assert: Tried to access default value of void type"
   | otherwise    = ELitNull t
+
+-- Built in functions declarations
+tI_I :: Type
+tI_I = FunT tInt [tInt]
+ineg :: Function
+ineg = BuiltInFn tI_I (Ident "_ineg")
+
+tI_II :: Type
+tI_II = FunT tInt [tInt, tInt]
+iadd, isub, imul, idiv, imod :: Function
+[iadd, isub, imul, idiv, imod] = map (\suf -> BuiltInFn tI_II (Ident $ "_" ++ suf))
+  ["iadd", "isub", "imul", "idiv", "imod"]
+
+tB_II :: Type
+tB_II = FunT tBool [tInt, tInt]
+ilt, ile, igt, ige, ieq, ineq :: Function
+[ilt, ile, igt, ige, ieq, ineq] = map (\suf -> BuiltInFn tB_II (Ident $ "_" ++ suf))
+  ["ilt", "ile", "igt", "ige", "ieq", "ineq"]
+
+tB_OO :: Type
+tB_OO = FunT tBool [SimpleT objectClassIdent, SimpleT objectClassIdent]
+oeq, oneq :: Function
+[oeq, oneq] = map (\suf -> BuiltInFn tB_OO (Ident $ "_" ++ suf))
+  ["oeq", "oneq"]
+
+tB_B :: Type
+tB_B = FunT tBool [tBool]
+bnot :: Function
+bnot = BuiltInFn tB_B (Ident "_bnot")
+
+tB_BB :: Type
+tB_BB = FunT tBool [tBool, tBool]
+bor, band :: Function
+[bor, band] = map (\suf -> BuiltInFn tB_BB (Ident $ "_" ++ suf))
+  ["bor", "band"]
+
 
 
 data Variable
@@ -77,13 +109,6 @@ instance HasType Function where
 instance HasType Class where
   getType = SimpleT . getIdent
 
+
 type Env' a = M.Map Ident a
 type Env = (Env' Variable, Env' Function, Env' Class)
-
-
-vEnv :: Lens' Env (Env' Variable)
-fEnv :: Lens' Env (Env' Function)
-cEnv :: Lens' Env (Env'    Class)
-vEnv = lens (\(ve,  _,  _) -> ve) (\( _, fe, ce) ve -> (ve, fe, ce))
-fEnv = lens (\( _, fe,  _) -> fe) (\(ve,  _, ce) fe -> (ve, fe, ce))
-cEnv = lens (\( _,  _, ce) -> ce) (\(ve, fe,  _) ce -> (ve, fe, ce))

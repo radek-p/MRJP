@@ -8,5 +8,3 @@ executable LatteC
   hs-source-dirs:  src
   build-depends:   base, mtl, array, containers, lens
   ghc-options:     -Wall
-
--- == 1.14.*, stylish-haskell
