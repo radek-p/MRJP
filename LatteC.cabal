@@ -6,5 +6,5 @@ cabal-version:     >= 1.2
 executable LatteC
   main-is:         Main.hs
   hs-source-dirs:  src
-  build-depends:   base, mtl, array, containers, lens
+  build-depends:   base, mtl, array, containers, lens, transformers
   ghc-options:     -Wall

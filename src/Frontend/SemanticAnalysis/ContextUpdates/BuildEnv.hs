@@ -6,6 +6,7 @@ import qualified Data.Graph as G
 import qualified Data.Tree  as T
 import qualified Data.Maybe as MB
 import Control.Lens
+import Control.Monad.IO.Class
 
 import Frontend.SemanticAnalysis.Monad
 import Frontend.SemanticAnalysis.CheckError
@@ -15,9 +16,13 @@ import Frontend.Parser.AbsLatte
 
 buildEnv :: Program -> CheckM Env
 buildEnv p = do
+  liftIO $ putStrLn "0"
   venv <- use vEnv
+  liftIO $ putStrLn "1"
   fenv <- getFunctions p
+  liftIO $ putStrLn "2"
   cenv <- getClasses   p
+  liftIO $ putStrLn "3"
   return (venv, fenv, cenv)
 
 getClassFields :: [MemberDef] -> Env' Variable

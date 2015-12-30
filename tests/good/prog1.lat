@@ -1,8 +1,10 @@
 class Test {
-    int[] val = new int [42];
-    Test tail = new Test;
+    int[] val;
+    Test tail;
 
     int doSth(int arg, Test otherTest) {
+        val  = new int [42];
+        tail = new Test;
         return 42;
     }
 }

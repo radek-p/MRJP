@@ -3,6 +3,7 @@ module Frontend.SemanticAnalysis.Runner where
 
 import Prelude hiding (cycle)
 import Control.Lens
+import Control.Monad.IO.Class
 
 import Frontend.Parser.AbsLatte
 import Frontend.SemanticAnalysis.Monad
@@ -16,55 +17,18 @@ import Frontend.SemanticAnalysis.Checks.FieldsNotInitialised
 checkProgram :: Program -> CheckM ()
 checkProgram p = do
   -- first pass of checks
+  liftIO $ putStr "[....] First pass of static checks."
   mapM_ (\c -> c p) [ checkCI, checkIdentsUnique, checkFNI ]
+  liftIO $ putStrLn "\r[DONE] First pass of static checks."
 
   -- bulding type environment for second pass of checks
+  liftIO $ putStr "[....] Generating environment of types."
   env <~ buildEnv p
+  liftIO $ putStrLn "\r[DONE] Generating environment of types."
 
   -- second pass of checks
+  liftIO $ putStrLn "[TODO] Second pass of static checks."
   return ()
-
-
---collectClasses :: Program -> CheckM' () [Class]
---collectClasses (Program topdefs) =
---  let
---    trees          = G.components g
---    topClassVertex = MB.fromJust $ k2v objectClassIdent -- TODO do not use fromJust
---  in do
---    case trees of
---      []   -> error "This list shall never be empty"
---      [_] -> do
---        let [tree] = G.dfs (G.transposeG g) [topClassVertex]
---        let clsTree = fmap getCls tree
---        return $ T.flatten (updateCls clsTree)
---      _    -> do
---        let cycles  = [ lst   | lst <- map T.flatten trees, topClassVertex `notElem` lst ]
---        let classes = [ [ ident | (_, ident, _) <- map v2n cycle ] | cycle <- cycles ]
---        throwCheckError (CyclicInherritance classes)
---      where
---        getVEnv :: [MemberDef] -> Env' Variable
---        getVEnv members =
---          M.fromList [ (ident, Variable t ident) |
---                       (FieldDef (VarDef t items)) <- members,
---                       (NoInit ident)              <- items    ]
---        getFEnv :: [MemberDef] -> Env' Function
---        getFEnv members =
---          M.fromList [ (ident, Function t ident [Variable typ i | (Arg typ i) <- args] body) |
---                        MetDef (FnDef t ident args body) <- members ]
---        topClass = [ (Object, objectClassIdent, []) ]
---        edges = [ (SubClass name Object (getVEnv members) (getFEnv members), name, [supName]) |
---                  ClsTopDef (ClsDefEx name supName members) <- topdefs ] ++ topClass
---        (g, v2n, k2v) = G.graphFromEdges edges
---        getCls v = let (c, _, _) = v2n v in c
---        updateCls :: T.Tree Class -> T.Tree Class
---        updateCls (T.Node super subs) =
---          let
---            children = map (\x -> case x of
---                T.Node (SubClass a _ b c) sc -> T.Node (SubClass a super b c) sc
---                _                            -> error "Internal error"
---              ) subs
---          in
---            T.Node super (map updateCls children)
 
 
 --checkVarDecl :: Program -> CheckM ()
