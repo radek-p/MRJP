@@ -1,11 +1,8 @@
 {-# LANGUAGE GADTs, KindSignatures, Rank2Types #-}
 module Frontend.SemanticAnalysis.Checks.FieldsNotInitialised (checkFNI) where
 
-import Control.Monad.IO.Class
-
 import Frontend.Parser.ComposOp
 import Frontend.Parser.AbsLatte
-import Frontend.Utility.PrettyPrinting
 import Frontend.SemanticAnalysis.Monad
 import Frontend.SemanticAnalysis.CheckError
 import Control.Monad

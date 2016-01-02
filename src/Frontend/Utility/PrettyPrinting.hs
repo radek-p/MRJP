@@ -3,7 +3,26 @@ module Frontend.Utility.PrettyPrinting where
 
 import qualified Frontend.Parser.PrintLatte as P
 import Frontend.Parser.AbsLatte
+import Data.List ( intercalate )
 
+
+printColorSingle :: String -> String -> String
+printColorSingle ccode s = ccode ++ s ++ "\x1b[0m"
+
+printColor :: String -> String -> String
+printColor ccode s = intercalate "\n" [ printColorSingle ccode l | l <- lines s ]
+
+printRed :: String -> String
+printRed = printColor "\x1b[31m"
+
+printGreen :: String -> String
+printGreen = printColor "\x1b[32m"
+
+printWhite :: String -> String
+printWhite = printColor "\x1b[37m"
+
+printBoldWhite :: String -> String
+printBoldWhite = printColor "\x1b[37;1m"
 
 class Printable a where
   printTree :: a -> String
@@ -39,15 +58,16 @@ instance Printable (Tree a) where
     SimpleT   {} -> P.printTree x
     ArrayT    {} -> P.printTree x
     FunT      {} -> P.printTree x
-    EVar      {} -> P.printTree x
     ELitInt   {} -> P.printTree x
     ELitTrue  {} -> P.printTree x
     ELitFalse {} -> P.printTree x
     ELitNull  {} -> P.printTree x
     EApp      {} -> P.printTree x
     EString   {} -> P.printTree x
-    ArrAccess {} -> P.printTree x
-    ClsAccess {} -> P.printTree x
+    ELVal     {} -> P.printTree x
+    -- EVar      {} -> P.printTree x
+    -- ArrAccess {} -> P.printTree x
+    -- ClsAccess {} -> P.printTree x
     ClsApply  {} -> P.printTree x
     ArrAlloc  {} -> P.printTree x
     ClsAlloc  {} -> P.printTree x
@@ -73,3 +93,13 @@ instance Printable (Tree a) where
     EQU       {} -> P.printTree x
     NE        {} -> P.printTree x
     Ident     {} -> P.printTree x
+    EBinOp    {} -> P.printTree x
+    AND       {} -> P.printTree x
+    OR        {} -> P.printTree x
+    EQU_Int   {} -> P.printTree x
+    EQU_Bol   {} -> P.printTree x
+    EQU_Str   {} -> P.printTree x
+    EQU_Arr   {} -> P.printTree x
+    EQU_Ref   {} -> P.printTree x
+    Plus_Str  {} -> P.printTree x
+    Plus_Int  {} -> P.printTree x

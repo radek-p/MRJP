@@ -41,6 +41,10 @@ throwCheckError :: CEType -> CheckM' a b
 throwCheckError et =
   throwError $ CheckError et []
 
+throwTypeError :: TypeError -> CheckM' a b
+throwTypeError et =
+  throwCheckError $ TypeError et
+
 infixl 0 $$
 ($$) :: CEContext -> CheckM' a b -> CheckM' a b
 x $$ m = m `catchError` (\(CheckError et ctx) -> throwError $ CheckError et (x : ctx))

@@ -12,23 +12,32 @@ import Frontend.SemanticAnalysis.Checks.CyclicInherritance
 import Frontend.SemanticAnalysis.Checks.UniqueIdents
 import Frontend.SemanticAnalysis.ContextUpdates.BuildEnv
 import Frontend.SemanticAnalysis.Checks.FieldsNotInitialised
+import Frontend.SemanticAnalysis.Checks.NoNestedDecls
+import Frontend.SemanticAnalysis.Transformations.UnifyOperators
+import Frontend.SemanticAnalysis.Checks.TypeCorrectness
 
 
 checkProgram :: Program -> CheckM ()
-checkProgram p = do
+checkProgram p0 = do
   -- first pass of checks
-  liftIO $ putStr "[....] First pass of static checks."
-  mapM_ (\c -> c p) [ checkCI, checkIdentsUnique, checkFNI ]
-  liftIO $ putStrLn "\r[DONE] First pass of static checks."
+  mapM_ (\c -> c p0) [ checkCI, checkIdentsUnique, checkFNI, checkNND ]
+  liftIO $ putStrLn "[ OK ] First pass of static checks."
+
+  -- transformation of AST
+  let p1 = unifyOperators p0
 
   -- bulding type environment for second pass of checks
-  liftIO $ putStr "[....] Generating environment of types."
-  env <~ buildEnv p
-  liftIO $ putStrLn "\r[DONE] Generating environment of types."
+  env <~ buildEnv p1
+  liftIO $ putStrLn "\r[ OK ] Generating environment of types."
 
+  p2 <- checkTC p1
   -- second pass of checks
   liftIO $ putStrLn "[TODO] Second pass of static checks."
   return ()
+
+
+
+
 
 
 --checkVarDecl :: Program -> CheckM ()

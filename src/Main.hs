@@ -7,8 +7,8 @@ import Control.Monad.Except
 import Control.Monad.State
 
 import Frontend.SemanticAnalysis.Runner
+import Frontend.Utility.PrettyPrinting
 import Frontend.Parser.ParLatte
-import Frontend.Parser.PrintLatte
 import Frontend.Parser.AbsLatte
 import Frontend.Parser.ErrM
 import Frontend.SemanticAnalysis.Monad ( initialState )
@@ -42,7 +42,7 @@ compileProgram tree = do
   putStrLn $ "Parsed:\n" ++ printTree tree
   checkRes <-  runExceptT (evalStateT (checkProgram tree) initialState)
   case checkRes of
-    Left err -> print err >> exitFailure
+    Left err -> putStrLn (show err) >> exitFailure
     Right () -> putStrLn "[ OK ] Program checked."
 
 showTree :: Int -> Program -> IO ()

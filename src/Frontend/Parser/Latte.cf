@@ -61,26 +61,30 @@ separator Type "," ;
 
 -- Expressions ---------------------------------------------
 
-EVar.      Expr6 ::= Ident ;                         -- LVal
 ELitInt.   Expr6 ::= Integer ;
 ELitTrue.  Expr6 ::= "true" ;
 ELitFalse. Expr6 ::= "false" ;
 ELitNull.  Expr6 ::= "(" Type ")null" ;
-EApp.      Expr6 ::= Ident "(" [Expr] ")" ;
 EString.   Expr6 ::= String ;
-ArrAccess. Expr6 ::= Expr6 "[" Expr "]" ;            -- LVal
-ClsAccess. Expr6 ::= Expr6 "." Ident ;               -- LVal
+EApp.      Expr6 ::= Ident "(" [Expr] ")" ;
+ELVal.     Expr6 ::= LVal ; -- Instead of those rules:
+-- EVar.      Expr6 ::= Ident ;                         -- LVal
+-- ArrAccess. Expr6 ::= Expr6 "[" Expr "]" ;            -- LVal
+-- ClsAccess. Expr6 ::= Expr6 "." Ident ;               -- LVal
 ClsApply.  Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
 
 ArrAlloc.  Expr5 ::= "new" Type "[" Expr "]" ;
 ClsAlloc.  Expr5 ::= "new" Type ;
 Neg.       Expr5 ::= "-" Expr6 ;
 Not.       Expr5 ::= "!" Expr6 ;
-EMul.      Expr4 ::= Expr4 MulOp Expr5 ;
-EAdd.      Expr3 ::= Expr3 AddOp Expr4 ;
-ERel.      Expr2 ::= Expr2 RelOp Expr3 ;
-EAnd.      Expr1 ::= Expr2 "&&"  Expr1 ;
-EOr.       Expr  ::= Expr1 "||"  Expr  ;
+
+EMul.      Expr4 ::= Expr4 Op2 Expr5 ;
+EAdd.      Expr3 ::= Expr3 Op1 Expr4 ;
+ERel.      Expr2 ::= Expr2 Op3 Expr3 ;
+EAnd.      Expr1 ::= Expr2 Op4 Expr1 ;
+EOr.       Expr  ::= Expr1 Op5 Expr  ;
+
+internal EBinOp. Expr ::= Expr Op Expr ;
 coercions  Expr 7 ;
 separator  Expr "," ;
 
@@ -92,17 +96,40 @@ LClsAcc.   LVal ::= Expr6 "." Ident ;
 
 -- operators -----------------------------------------------
 
-Plus.      AddOp ::= "+" ;
-Minus.     AddOp ::= "-" ;
-Times.     MulOp ::= "*" ;
-Div.       MulOp ::= "/" ;
-Mod.       MulOp ::= "%" ;
-LTH.       RelOp ::= "<" ;
-LE.        RelOp ::= "<=" ;
-GTH.       RelOp ::= ">" ;
-GE.        RelOp ::= ">=" ;
-EQU.       RelOp ::= "==" ;
-NE.        RelOp ::= "!=" ;
+Plus.      Op1 ::= "+"  ;
+Minus.     Op1 ::= "-"  ;
+
+Times.     Op2 ::= "*"  ;
+Div.       Op2 ::= "/"  ;
+Mod.       Op2 ::= "%"  ;
+
+LTH.       Op3 ::= "<"  ;
+LE.        Op3 ::= "<=" ;
+GTH.       Op3 ::= ">"  ;
+GE.        Op3 ::= ">=" ;
+EQU.       Op3 ::= "==" ;
+NE.        Op3 ::= "!=" ;
+
+AND.       Op4 ::= "&&" ;
+
+OR.        Op5 ::= "||" ;
+
+-- Overloaded versions of "==" operator
+internal EQU_Int. Op ::= "==" ;
+internal EQU_Str. Op ::= "==" ;
+internal EQU_Arr. Op ::= "==" ;
+internal EQU_Ref. Op ::= "==" ;
+internal EQU_Bol. Op ::= "==" ;
+
+-- Overloaded versions of "+" operator
+internal Plus_Int. Op ::= "+" ;
+internal Plus_Str. Op ::= "+" ;
+
+_.         Op ::= Op1 ;
+_.         Op ::= Op2 ;
+_.         Op ::= Op3 ;
+_.         Op ::= Op4 ;
+_.         Op ::= Op5 ;
 
 -- comments ------------------------------------------------
 

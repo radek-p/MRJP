@@ -10,8 +10,23 @@ objectClassIdent :: Ident
 objectClassIdent = Ident "_Object"
 
 -- Built in types
+builtInIdents :: [Ident]
+builtInIdents = map Ident ["int", "boolean", "string", "void"]
+
+lengthIdent :: Ident
+lengthIdent = Ident "length"
+
+idInt, idBool, idString, idVoid :: Ident
+[idInt, idBool, idString, idVoid] = builtInIdents
+
+builtInTypes :: [Type]
+builtInTypes = map (SimpleT) builtInIdents
+
 tInt, tBool, tString, tVoid :: Type
-[tInt, tBool, tString, tVoid] = map (SimpleT . Ident) ["int", "boolean", "string", "void"]
+[tInt, tBool, tString, tVoid] = builtInTypes
+
+isBuiltIn :: Ident -> Bool
+isBuiltIn i = any (==i) builtInIdents
 
 defaultValue :: Type -> Expr
 defaultValue t
@@ -60,12 +75,12 @@ bor, band :: Function
 
 data Variable
   = Variable Type Ident
-  deriving Show
+  deriving (Show, Eq)
 
 data Function
   = Function  Type Ident [Variable] Block
   | BuiltInFn Type Ident
-  deriving Show
+  deriving (Show, Eq)
 
 data Class
   = SubClass Ident           -- name
@@ -73,7 +88,7 @@ data Class
              (Env' Variable) -- fields
              (Env' Function) -- methods
   | Object                   -- superclass of all classes
-  deriving Show
+  deriving (Show, Eq)
 
 
 class HasIdent a where
@@ -112,3 +127,13 @@ instance HasType Class where
 
 type Env' a = M.Map Ident a
 type Env = (Env' Variable, Env' Function, Env' Class)
+
+--restrictedClasses :: [Class]
+--restrictedClasses =
+--  [ SubClass ident Object M.empty M.empty | ident <- [ idInt, idBool, idVoid ] ] ++
+--  [ SubClass idString Object M.fromList [  ] ]
+--
+--initialClassEnv :: Env' Class
+--initialClassEnv = M.fromList [
+--    SubClass
+--  ]
