@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs, Rank2Types #-}
 module Frontend.SemanticAnalysis.Checks.TypeCorrectness where
 
-import Control.Lens
+import Control.Lens hiding ( op )
 import Control.Monad
 import qualified Data.Map as M
 
@@ -9,6 +9,7 @@ import Frontend.SemanticAnalysis.Monad
 import Frontend.SemanticAnalysis.CheckError
 import Frontend.Parser.AbsLatte
 import Language.BuiltIns
+
 
 -- Check type correctness of program and replaces overloaded operators with
 -- operations appropriate to the expected type.
@@ -22,22 +23,22 @@ checkTC' x = case x of
 
 checkType :: Expr -> CheckM (Type, Expr)
 checkType e = CEContext e $$ let nc typ = return (typ, e) in case e of
-  ELitInt _       -> nc tInt
-  ELitTrue        -> nc tBool
-  ELitFalse       -> nc tBool
-  EString _       -> nc tString
+  ELitInt _       -> nc IntT
+  ELitTrue        -> nc BooleanT
+  ELitFalse       -> nc BooleanT
+  EString _       -> nc StringT
 
   ELitNull t      -> case t of
-      SimpleT ident -> getClass ident >> nc t
-      _             -> throwTypeError $ InvalidTypeOfNullLit t
+      ClassT ident -> getClass ident >> nc t
+      ArrayT _     -> error "TODO nulls as arrays"
+      _            -> throwTypeError $ InvalidTypeOfNullLit t
 
   EApp ident args -> do
     funType <- getFunction ident
     let FunT resType expected = getType funType
     argTypes <- mapM checkType args
     let (actual, args') = unzip argTypes
-    when (actual /= expected) $
-      throwTypeError (TEApp actual expected)
+    zipWithM_ ensureCompatible actual expected
     return (resType, EApp ident args')
 
   ELVal (LVar ident) -> getVariable ident >>= nc . getType
@@ -45,8 +46,7 @@ checkType e = CEContext e $$ let nc typ = return (typ, e) in case e of
   ELVal (LArrAcc arr idx) -> do
     (tarr, arr') <- checkType arr
     (tidx, idx') <- checkType idx
-    when (tidx /= tInt) $
-      throwTypeError (TEArrIdx tidx)
+    ensureCompatible' tidx IntT $ TEArrIdx tidx
     case tarr of
       ArrayT t -> return (t, ELVal $ LArrAcc arr' idx')
       _        -> throwTypeError (TEArr tarr)
@@ -54,41 +54,69 @@ checkType e = CEContext e $$ let nc typ = return (typ, e) in case e of
   ELVal (LClsAcc obj fieldIdent) -> do
     (tobj, obj') <- checkType obj
     case tobj of
-      SimpleT tident | not (isBuiltIn tident) -> do
+      ClassT tident -> do
         cls   <- getClass tident
         field <- getField fieldIdent cls
         return (getType field, ELVal (LClsAcc obj' fieldIdent))
-      SimpleT{} | tobj == tString ->
+      StringT ->
         if fieldIdent == lengthIdent then
-          return (tInt, ELVal (LClsAcc obj' fieldIdent))
+          return (IntT, ELVal (LClsAcc obj' fieldIdent))
         else
           throwTypeError $ FieldOfString fieldIdent
-      SimpleT _ ->
-        throwTypeError $ FieldOfBuiltIn tobj
+      VoidT    -> throwTypeError $ FieldOfBuiltIn tobj
+      IntT     -> throwTypeError $ FieldOfBuiltIn tobj
+      BooleanT -> throwTypeError $ FieldOfBuiltIn tobj
       ArrayT _ ->
         if fieldIdent == lengthIdent then
-          return (tInt, ELVal (LClsAcc obj' fieldIdent))
+          return (IntT, ELVal (LClsAcc obj' fieldIdent))
         else
           throwTypeError $ FieldOfArray fieldIdent
       FunT{} -> throwTypeError $ FieldOfFunction fieldIdent
 
   ClsApply _ _ _     -> error "TODO"
-  ArrAlloc telem _   -> nc telem     --
-  ClsAlloc typ       -> nc typ       -- TODO Check if class type
+
+  ArrAlloc telem e1  -> do
+    (typ, e1') <- checkType e1
+    ensureCompatible' typ IntT $ TEArrAlocLen typ
+    return (ArrayT telem, ArrAlloc telem e1')
+
+  ClsAlloc typ       -> case typ of
+    ClassT clsIdent -> nc typ
+    _               -> throwTypeError $ ObjAllocBadType typ
 
   Neg e1 -> do
     (typ, e1') <- checkType e1
-    when (typ /= tInt) $
-      throwTypeError (IncompatibleTypes tInt typ)
-    return (tInt, e1')
+    ensureCompatible typ IntT
+    return (IntT, e1')
 
   Not e1 -> do
     (typ, e1') <- checkType e1
-    when (typ /= tBool) $
-      throwTypeError (IncompatibleTypes tBool typ)
-    return (tBool, e1')
+    ensureCompatible typ BooleanT
+    return (BooleanT, e1')
 
-  EBinOp _ _ _ -> error "TODO binops"
+  EBinOp e1 op e2 -> do
+    (t1, e1') <- checkType e1
+    (t2, e2') <- checkType e2
+    let ensureEq t1' t2' ret = ensureCompatible t1 t1' >> ensureCompatible t2 t2' >> return (ret, EBinOp e1' op e2')
+    let tII_I = ensureEq IntT  IntT  IntT
+    let tII_B = ensureEq IntT  IntT  BooleanT
+    let tBB_B = ensureEq BooleanT BooleanT BooleanT
+    case op of
+      Minus -> tII_I
+      Times -> tII_I
+      Div   -> tII_I
+      Mod   -> tII_I
+      LTH   -> tII_B
+      LE    -> tII_B
+      GTH   -> tII_B
+      GE    -> tII_B
+      AND   -> tBB_B
+      OR    -> tBB_B
+      EQU   -> error "TODO =="
+      NE    -> error "TODO !="
+      Plus  -> error "TODO Plus"
+      _     -> error "TODO Other?"
+
 
   _ -> error "Should not appear at this stage"
 
@@ -98,6 +126,18 @@ isSuperclassOf :: Class -> Class -> Bool
 _  `isSuperclassOf` Object = False
 c1 `isSuperclassOf` (SubClass _ super _ _) =
   c1 == super || c1 `isSuperclassOf` super
+
+compatible :: Type -> Type -> CheckM Bool
+compatible t1 t2 = return $ t1 == t2 -- TODO inherritance
+
+ensureCompatible' :: Type -> Type -> TypeError -> CheckM ()
+ensureCompatible' t1 t2 err = do
+  res <- compatible t1 t2
+  unless res (throwTypeError err)
+  return ()
+
+ensureCompatible :: Type -> Type -> CheckM ()
+ensureCompatible t1 t2 = ensureCompatible' t1 t2 (IncompatibleTypes t1 t2)
 
 getVariable :: Ident -> CheckM Variable
 getVariable ident = do

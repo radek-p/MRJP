@@ -32,9 +32,11 @@ data TypeError
   | FieldOfBuiltIn   Type
   | InvalidTypeOfNullLit Type
   | TEApp [Type] [Type]
-  | TEArrIdx Type
-  | TEArr    Type
+  | TEArrIdx     Type
+  | TEArrAlocLen Type
+  | TEArr        Type
   | IncompatibleTypes Type Type
+  | ObjAllocBadType  Type
   deriving Show
 
 data CEContext

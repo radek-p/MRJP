@@ -55,7 +55,7 @@ instance Printable (Tree a) where
     SExp      {} -> P.printTree x
     NoInit    {} -> P.printTree x
     Init      {} -> P.printTree x
-    SimpleT   {} -> P.printTree x
+    ClassT    {} -> P.printTree x
     ArrayT    {} -> P.printTree x
     FunT      {} -> P.printTree x
     ELitInt   {} -> P.printTree x
@@ -103,3 +103,7 @@ instance Printable (Tree a) where
     EQU_Ref   {} -> P.printTree x
     Plus_Str  {} -> P.printTree x
     Plus_Int  {} -> P.printTree x
+    IntT      {} -> P.printTree x
+    StringT   {} -> P.printTree x
+    BooleanT  {} -> P.printTree x
+    VoidT     {} -> P.printTree x

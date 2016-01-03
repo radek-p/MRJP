@@ -50,11 +50,11 @@ SExp.      Stmt ::= Expr  ";" ;
 
 -- Types ---------------------------------------------------
 
--- Int.          Type ::= "int" ;
--- Str.          Type ::= "string" ;
--- Bool.         Type ::= "boolean" ;
--- Void.         Type ::= "void" ;
-SimpleT.       Type ::= Ident ;
+IntT.          Type ::= "int" ;
+StringT.       Type ::= "string" ;
+BooleanT.      Type ::= "boolean" ;
+VoidT.         Type ::= "void" ;
+ClassT.        Type ::= Ident ;
 ArrayT.        Type ::= Type "[]" ;
 internal FunT. Type ::= Type "(" [Type] ")" ;
 separator Type "," ;
@@ -120,6 +120,13 @@ internal EQU_Str. Op ::= "==" ;
 internal EQU_Arr. Op ::= "==" ;
 internal EQU_Ref. Op ::= "==" ;
 internal EQU_Bol. Op ::= "==" ;
+
+-- Overloaded versions of "==" operator
+internal NE_Int. Op ::= "!=" ;
+internal NE_Str. Op ::= "!=" ;
+internal NE_Arr. Op ::= "!=" ;
+internal NE_Ref. Op ::= "!=" ;
+internal NE_Bol. Op ::= "!=" ;
 
 -- Overloaded versions of "+" operator
 internal Plus_Int. Op ::= "+" ;
