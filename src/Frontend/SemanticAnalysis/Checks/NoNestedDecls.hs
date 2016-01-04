@@ -21,4 +21,3 @@ checkNode allow x = CEContext x $$ do
     Block _ -> checkNND' True x
     Decl{}  -> unless allow $ throwCheckError NestedVariableDeclaration
     _       -> checkNND' False x
-

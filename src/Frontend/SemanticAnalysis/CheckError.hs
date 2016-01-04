@@ -19,6 +19,7 @@ data CEType
   | ClassFieldInitialised
   | NestedVariableDeclaration
   | TypeError TypeError
+  | FeatureNotSupported String
 
 data TypeError
   = ClassNotFound    Ident
@@ -37,6 +38,9 @@ data TypeError
   | TEArr        Type
   | IncompatibleTypes Type Type
   | ObjAllocBadType  Type
+  | InvalidOperandTypes Type Type
+  | InvalidNumberOfArguments [Type] [Type]
+  | IdentifierAlreadyDefined Ident
   deriving Show
 
 data CEContext
@@ -48,17 +52,18 @@ data CheckError
 
 instance Show CEType where
   show err = case err of
-    OtherException s          -> "Other error: " ++ s
-    FunctionNamesNotUnique    -> "Function names are not unique"
-    ClassNamesNotUnique       -> "Class names are not unique"
-    MainFunctionNotDefined    -> "There is not definition of required function  int main()"
-    UninitializedVarUsage i   -> "Variable " ++ printTree i ++ "  was not initialized before use" -- TODO Maybe remove.
-    CyclicInherritance ids    -> "Cyclic inherritance detected:  " ++
-                                 intercalate ";" [ intercalate "," (map printTree cyc) | cyc <- ids ]
-    ClassFieldInitialised     -> "Class fields cannot be initialised with default value."
-    NestedVariableDeclaration -> "Variables can be declared only at block level."
-    RestrictedIdentifier i    -> "Restricted identifier  " ++ printTree i ++ "  was used."
-    TypeError e               -> "Type error: " ++ show e
+    OtherException s           -> "Other error: " ++ s
+    FunctionNamesNotUnique     -> "Function names are not unique"
+    ClassNamesNotUnique        -> "Class names are not unique"
+    MainFunctionNotDefined     -> "There is not definition of required function  int main()"
+    UninitializedVarUsage i    -> "Variable " ++ printTree i ++ "  was not initialized before use" -- TODO Maybe remove.
+    CyclicInherritance ids     -> "Cyclic inherritance detected:  " ++
+                                  intercalate ";" [ intercalate "," (map printTree cyc) | cyc <- ids ]
+    ClassFieldInitialised      -> "Class fields cannot be initialised with default value."
+    NestedVariableDeclaration  -> "Variables can be declared only at block level."
+    RestrictedIdentifier i     -> "Restricted identifier  " ++ printTree i ++ "  was used."
+    TypeError e                -> "Type error: " ++ show e
+    FeatureNotSupported s      -> "Feature is not supported yet: " ++ s
 
 showFnDef :: FnDef -> String
 showFnDef (FnDef typ ident args _) =
@@ -78,16 +83,23 @@ instance Show CEContext where
       ]
     ClsDef   ident _       -> showClsDef ident objectClassIdent
     ClsDefEx ident super _ -> showClsDef ident super
-    Decl VarDef{} -> unlines [
+    Init i _ -> unlines [
+        printWhite "In definition of variable  " ++ printBoldWhite (printTree i) ++ printWhite "  :",
+        "   " ++ printTree x
+      ]
+    EApp i _ -> unlines [
+        printWhite "In call of function  " ++ printBoldWhite (printTree i) ++ printWhite "  :",
+        "   " ++ printTree x
+      ]
+    Decl _ _ -> unlines [
         printWhite "In declaration of variable(s):",
         "   " ++ printTree x
       ]
     Cond{}     -> unlines [ printWhite "In  " ++ printBoldWhite "if"      ++ printWhite "  statement." ]
     CondElse{} -> unlines [ printWhite "In  " ++ printBoldWhite "if else" ++ printWhite "  statement." ]
-    VarDef{} -> ""
     FnDef{} -> ""
     Block{} -> ""
-    _ -> words (show x) !! 0 ++ "\n"
+    _ -> words (show x) !! 0 ++ "\n   " ++ printTree x ++ "\n"
 
 printContexts :: [CEContext] -> String
 printContexts ctxs =

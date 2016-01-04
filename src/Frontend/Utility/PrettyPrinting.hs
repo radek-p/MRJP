@@ -38,7 +38,6 @@ instance Printable (Tree a) where
     FnDef     {} -> P.printTree x
     ClsDef    {} -> P.printTree x
     ClsDefEx  {} -> P.printTree x
-    VarDef    {} -> P.printTree x
     Block     {} -> P.printTree x
     Empty     {} -> P.printTree x
     BStmt     {} -> P.printTree x
@@ -97,7 +96,7 @@ instance Printable (Tree a) where
     AND       {} -> P.printTree x
     OR        {} -> P.printTree x
     EQU_Int   {} -> P.printTree x
-    EQU_Bol   {} -> P.printTree x
+    EQU_Bool  {} -> P.printTree x
     EQU_Str   {} -> P.printTree x
     EQU_Arr   {} -> P.printTree x
     EQU_Ref   {} -> P.printTree x
@@ -107,3 +106,9 @@ instance Printable (Tree a) where
     StringT   {} -> P.printTree x
     BooleanT  {} -> P.printTree x
     VoidT     {} -> P.printTree x
+    FdNoInit  {} -> P.printTree x
+    NE_Int    {} -> P.printTree x
+    NE_Str    {} -> P.printTree x
+    NE_Arr    {} -> P.printTree x
+    NE_Ref    {} -> P.printTree x
+    NE_Bool   {} -> P.printTree x

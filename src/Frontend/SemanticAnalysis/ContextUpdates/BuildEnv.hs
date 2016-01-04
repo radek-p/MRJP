@@ -13,18 +13,18 @@ import Language.BuiltIns
 import Frontend.Parser.AbsLatte
 
 
-buildEnv :: Program -> CheckM Env
+buildEnv :: Program -> CheckM ()
 buildEnv p = do
-  venv <- use vEnv
-  fenv <- getFunctions p
-  cenv <- getClasses   p
-  return (venv, fenv, cenv)
+  fenv' <- getFunctions p
+  cenv' <- getClasses   p
+  fEnv %= (M.union fenv')
+  cEnv %= (M.union cenv')
 
 getClassFields :: [MemberDef] -> Env' Variable
 getClassFields members =
   M.fromList $ do
-    FieldDef (VarDef t items) <- members
-    NoInit ident              <- items
+    FieldDef t items <- members
+    FdNoInit ident   <- items
     return (ident, Variable t ident)
 
 getFunctionType :: FnDef -> Type

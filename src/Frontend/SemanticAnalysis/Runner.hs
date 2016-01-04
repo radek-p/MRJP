@@ -3,15 +3,18 @@ module Frontend.SemanticAnalysis.Runner where
 
 import Prelude hiding (cycle)
 import Control.Lens
+import Control.Monad.State
 import Control.Monad.IO.Class
+import qualified Data.Map as M
 
+import Language.BuiltIns
 import Frontend.Parser.AbsLatte
+import Frontend.Utility.PrettyPrinting
 import Frontend.SemanticAnalysis.Monad
 
 import Frontend.SemanticAnalysis.Checks.CyclicInherritance
 import Frontend.SemanticAnalysis.Checks.UniqueIdents
 import Frontend.SemanticAnalysis.ContextUpdates.BuildEnv
-import Frontend.SemanticAnalysis.Checks.FieldsNotInitialised
 import Frontend.SemanticAnalysis.Checks.NoNestedDecls
 import Frontend.SemanticAnalysis.Transformations.UnifyOperators
 import Frontend.SemanticAnalysis.Checks.TypeCorrectness
@@ -19,25 +22,30 @@ import Frontend.SemanticAnalysis.Checks.TypeCorrectness
 
 checkProgram :: Program -> CheckM ()
 checkProgram p0 = do
+  -- set initial state
+  put initialState
+
   -- first pass of checks
-  mapM_ (\c -> c p0) [ checkCI, checkIdentsUnique, checkFNI, checkNND ]
+  mapM_ (\c -> c p0) [ checkCI, checkIdentsUnique, checkNND ]
   liftIO $ putStrLn "[ OK ] First pass of static checks."
 
   -- transformation of AST
   let p1 = unifyOperators p0
 
+  liftIO $ putStrLn (show p1)
+
   -- bulding type environment for second pass of checks
-  env <~ buildEnv p1
+  buildEnv p1
   liftIO $ putStrLn "\r[ OK ] Generating environment of types."
 
   p2 <- checkTC p1
   -- second pass of checks
   liftIO $ putStrLn "[TODO] Second pass of static checks."
+  liftIO $ print p2
   return ()
 
-
-
-
+initialState :: CheckState
+initialState = CheckState initialEnv undefined (M.empty) Normal
 
 
 --checkVarDecl :: Program -> CheckM ()

@@ -2,14 +2,38 @@ module Frontend.SemanticAnalysis.Monad where
 
 import Control.Monad.Except
 import Control.Monad.State
-import qualified Data.Map as M
 import Control.Lens
+import qualified Data.Map as M
 
 import Language.BuiltIns
+import Frontend.Parser.AbsLatte
 import Frontend.SemanticAnalysis.CheckError
+import Frontend.Utility.PrettyPrinting
 
 
+--------------------------------------
+-- Data types                       --
+--------------------------------------
 
+type CheckM' s a = StateT s (ExceptT CheckError IO) a
+type CheckM  a   = CheckM' CheckState a
+
+data RunMode
+  = Normal
+  | Debug
+  deriving Eq
+
+data CheckState
+  = CheckState
+      Env             -- environment
+      Type            -- return type for checked function
+      (Env' Variable) -- variables defined in current scope
+      RunMode         -- run mode
+
+
+--------------------------------------
+-- Lenses                           --
+--------------------------------------
 
 vEnv' :: Lens' Env (Env' Variable)
 fEnv' :: Lens' Env (Env' Function)
@@ -18,11 +42,17 @@ vEnv' = lens (\(ve,  _,  _) -> ve) (\( _, fe, ce) ve -> (ve, fe, ce))
 fEnv' = lens (\( _, fe,  _) -> fe) (\(ve,  _, ce) fe -> (ve, fe, ce))
 cEnv' = lens (\( _,  _, ce) -> ce) (\(ve, fe,  _) ce -> (ve, fe, ce))
 
-data CheckState
-  = CheckState Env
-
 env :: Lens' CheckState Env
-env = lens (\(CheckState ev) -> ev) (const CheckState)
+env = lens (\(CheckState ev _ _ _) -> ev) (\(CheckState _ rt sc rm) ev -> CheckState ev rt sc rm)
+
+returnType :: Lens' CheckState Type
+returnType = lens (\(CheckState _ rt _ _) -> rt) (\(CheckState ev _ sc rm) rt -> CheckState ev rt sc rm)
+
+currentScope :: Lens' CheckState (Env' Variable)
+currentScope = lens (\(CheckState _ _ sc _) -> sc) (\(CheckState ev rt _ rm) sc -> CheckState ev rt sc rm)
+
+runMode :: Lens' CheckState RunMode
+runMode = lens (\(CheckState _ _ _ rm) -> rm) (\(CheckState ev rt sc _) rm -> CheckState ev rt sc rm)
 
 vEnv :: Lens' CheckState (Env' Variable)
 fEnv :: Lens' CheckState (Env' Function)
@@ -31,11 +61,51 @@ vEnv = env . vEnv'
 fEnv = env . fEnv'
 cEnv = env . cEnv'
 
-initialState :: CheckState
-initialState = CheckState (M.empty, M.empty, M.empty)
 
-type CheckM' s a = StateT s (ExceptT CheckError IO) a
-type CheckM  a   = CheckM' CheckState a
+--------------------------------------
+-- Environment access helpers       --
+--------------------------------------
+
+getVariable :: Ident -> CheckM Variable
+getVariable ident = do
+  e <- use vEnv
+  case M.lookup ident e of
+    Just var -> return var
+    Nothing  -> throwTypeError $ VariableNotFound ident
+
+getClass :: Ident -> CheckM Class
+getClass ident = do
+  e <- use cEnv
+  case M.lookup ident e of
+    Just cls -> return cls
+    Nothing  -> throwTypeError $ ClassNotFound ident
+
+getClassItem :: ((Env' Variable, Env' Function) -> Env' c) -> (Ident -> Class -> TypeError) -> Ident -> Class -> Class -> CheckM c
+getClassItem _ err ident orig (Object) =
+  throwTypeError $ err ident orig
+
+getClassItem component err ident orig (SubClass _ super fiEnv mEnv) =
+  case M.lookup ident (component (fiEnv, mEnv)) of
+    Just method -> return method
+    Nothing     -> getClassItem component err ident orig super
+
+getField :: Ident -> Class -> CheckM Variable
+getField ident cls = getClassItem fst FieldNotFound ident cls cls
+
+getMethod :: Ident -> Class -> CheckM Function
+getMethod ident cls = getClassItem snd MethodNotFound ident cls cls
+
+getFunction :: Ident -> CheckM Function
+getFunction ident = do
+  e <- use fEnv
+  case M.lookup ident e of
+    Just fun -> return fun
+    Nothing  -> throwTypeError $ FunctionNotFound ident
+
+
+--------------------------------------
+-- Error reporting helper functions --
+--------------------------------------
 
 throwCheckError :: CEType -> CheckM' a b
 throwCheckError et =
@@ -48,3 +118,25 @@ throwTypeError et =
 infixl 0 $$
 ($$) :: CEContext -> CheckM' a b -> CheckM' a b
 x $$ m = m `catchError` (\(CheckError et ctx) -> throwError $ CheckError et (x : ctx))
+
+observeStep :: Tree a -> CheckM ()
+observeStep x = do
+  mode <- use runMode
+  when (mode == Debug) $
+    observeStepInner x
+  return ()
+
+observeStepInner :: Tree a -> CheckM ()
+observeStepInner x = do
+  venv  <- use vEnv
+  scope <- use currentScope
+  liftIO $ putStrLn (printBoldWhite "constructor: " ++ (words (show x) !! 0))
+  liftIO $ putStrLn (printBoldWhite "tree:        " ++ printTree x)
+  liftIO $ putStrLn (printBoldWhite "venv:        " ++ show venv)
+  liftIO $ putStrLn (printBoldWhite "scope:       " ++ show scope)
+  liftIO $ putStrLn ("#########################################")
+  line <- liftIO $ getLine
+  when (line == "e") $
+    throwCheckError $ OtherException "Interrupt"
+  when (line == "r") (runMode .= Normal)
+  return ()

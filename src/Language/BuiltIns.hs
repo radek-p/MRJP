@@ -80,12 +80,18 @@ instance HasType Class where
 type Env' a = M.Map Ident a
 type Env = (Env' Variable, Env' Function, Env' Class)
 
---restrictedClasses :: [Class]
---restrictedClasses =
---  [ SubClass ident Object M.empty M.empty | ident <- [ idInt, idBool, idVoid ] ] ++
---  [ SubClass idString Object M.fromList [  ] ]
---
---initialClassEnv :: Env' Class
---initialClassEnv = M.fromList [
---    SubClass
---  ]
+builtInFunctions :: [Function]
+builtInFunctions = [
+    BuiltInFn (FunT VoidT   [IntT]   ) (Ident "printInt"),
+    BuiltInFn (FunT VoidT   [StringT]) (Ident "printString"),
+    BuiltInFn (FunT IntT    []       ) (Ident "readInt"),
+    BuiltInFn (FunT StringT []       ) (Ident "readString")
+  ]
+
+initialFEnv :: Env' Function
+initialFEnv = M.fromList [
+    (getIdent fn, fn) | fn <- builtInFunctions
+  ]
+
+initialEnv :: Env
+initialEnv = (M.empty, initialFEnv, M.empty)

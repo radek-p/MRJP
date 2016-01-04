@@ -13,7 +13,11 @@ ClsTopDef. TopDef ::= ClsDef ;
 separator nonempty TopDef "" ;
 
 MetDef.    MemberDef ::= FnDef ;
-FieldDef.  MemberDef ::= VarDef ;
+FieldDef.  MemberDef ::= Type [FdItem] ";" ;
+
+	FdNoInit.  FdItem    ::= Ident ;
+	separator nonempty FdItem "," ;
+
 separator MemberDef "" ;
 
 Arg. 	     Arg ::= Type Ident;
@@ -22,7 +26,6 @@ separator  Arg "," ;
 FnDef.     FnDef  ::= Type Ident "(" [Arg] ")" Block ;
 ClsDef.    ClsDef ::= "class" Ident                 "{" [MemberDef] "}" ;
 ClsDefEx.  ClsDef ::= "class" Ident "extends" Ident "{" [MemberDef] "}" ;
-VarDef.    VarDef ::= Type [Item] ";" ;
 
 -- statements ----------------------------------------------
 
@@ -31,7 +34,7 @@ Block.     Block ::= "{" [Stmt] "}" ;
 separator  Stmt "" ;
 Empty.     Stmt ::= ";" ;
 BStmt.     Stmt ::= Block ;
-Decl.      Stmt ::= VarDef ;
+Decl.      Stmt ::= Type [Item] ";" ;
 
 	NoInit.    Item ::= Ident ; 
 	Init.      Item ::= Ident "=" Expr ;
@@ -119,14 +122,14 @@ internal EQU_Int. Op ::= "==" ;
 internal EQU_Str. Op ::= "==" ;
 internal EQU_Arr. Op ::= "==" ;
 internal EQU_Ref. Op ::= "==" ;
-internal EQU_Bol. Op ::= "==" ;
+internal EQU_Bool. Op ::= "==" ;
 
 -- Overloaded versions of "==" operator
 internal NE_Int. Op ::= "!=" ;
 internal NE_Str. Op ::= "!=" ;
 internal NE_Arr. Op ::= "!=" ;
 internal NE_Ref. Op ::= "!=" ;
-internal NE_Bol. Op ::= "!=" ;
+internal NE_Bool. Op ::= "!=" ;
 
 -- Overloaded versions of "+" operator
 internal Plus_Int. Op ::= "+" ;

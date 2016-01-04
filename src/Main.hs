@@ -11,7 +11,6 @@ import Frontend.Utility.PrettyPrinting
 import Frontend.Parser.ParLatte
 import Frontend.Parser.AbsLatte
 import Frontend.Parser.ErrM
-import Frontend.SemanticAnalysis.Monad ( initialState )
 
 
 type Verbosity = Int
@@ -40,7 +39,7 @@ compileProgram :: Program -> IO ()
 compileProgram tree = do
   putStrLn "\n[ OK ] Parsing."
   putStrLn $ "Parsed:\n" ++ printTree tree
-  checkRes <-  runExceptT (evalStateT (checkProgram tree) initialState)
+  checkRes <-  runExceptT (evalStateT (checkProgram tree) undefined)
   case checkRes of
     Left err -> putStrLn (show err) >> exitFailure
     Right () -> putStrLn "[ OK ] Program checked."

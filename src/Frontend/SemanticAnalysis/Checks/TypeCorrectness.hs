@@ -3,103 +3,165 @@ module Frontend.SemanticAnalysis.Checks.TypeCorrectness where
 
 import Control.Lens hiding ( op )
 import Control.Monad
+import Control.Monad.Except
 import qualified Data.Map as M
 
 import Frontend.SemanticAnalysis.Monad
 import Frontend.SemanticAnalysis.CheckError
 import Frontend.Parser.AbsLatte
 import Language.BuiltIns
+import Frontend.Utility.PrettyPrinting
+
+
+-- Features that are not required at this stage
+-- were explicitly turned off.
+objectsNotSupportedYet :: CheckM a
+objectsNotSupportedYet = throwCheckError $ FeatureNotSupported "objects"
+
+arraysNotSupportedYet :: CheckM a
+arraysNotSupportedYet = throwCheckError $ FeatureNotSupported "arrays"
 
 
 -- Check type correctness of program and replaces overloaded operators with
 -- operations appropriate to the expected type.
 checkTC :: Program -> CheckM (Program)
-checkTC prog = checkTC' prog
+checkTC prog = checkStmt prog
 
-checkTC' :: forall a. Tree a -> CheckM (Tree a)
-checkTC' x = case x of
-  _ -> return x
+checkStmt :: Tree a -> CheckM (Tree a)
+checkStmt = composOpM (\x -> observeStep x >> checkStmtInner x)
 
+newScope :: CheckM a -> CheckM a
+newScope m = do
+  outerEnv   <- use env
+  outerScope <- use currentScope
+  currentScope .= M.empty
+  res <- m
+  env          .= outerEnv
+  currentScope .= outerScope
+  return res
 
-checkType :: Expr -> CheckM (Type, Expr)
-checkType e = CEContext e $$ let nc typ = return (typ, e) in case e of
+declVar :: (Type, Ident) -> CheckM ()
+declVar (typ, ident) = do
+  scope <- use currentScope
+  when (ident `M.member` scope) $
+    throwTypeError (IdentifierAlreadyDefined ident)
+  let doInsertion = M.insert ident $ Variable typ ident
+  vEnv         %= doInsertion
+  currentScope %= doInsertion
+
+declVars :: [(Type, Ident)] -> CheckM ()
+declVars lst =
+  mapM_ (declVar) lst
+
+checkStmtInner :: Tree a -> CheckM (Tree a)
+checkStmtInner x = CEContext x $$ case x of
+  ClsDef{} -> objectsNotSupportedYet
+  FnDef retType _ args _ -> newScope $ do
+    declVars [(typ, ident) | Arg typ ident <- args]
+    returnType .= retType
+    checkStmt x
+  Ret e1 -> do
+    observeStep x
+    (type', e1') <- checkExpr e1
+    retType <- use returnType
+    type' <=! retType
+    return $ Ret e1'
+  VRet -> do
+    observeStep x
+    retType <- use returnType
+    retType <=! VoidT
+    return VRet
+  BStmt _  -> newScope $ checkStmt x
+  Decl typ items -> do
+    declVars $ map (\item -> case item of { Init ident _ -> (typ, ident); NoInit ident -> (typ, ident) }) items
+    checkStmt x
+  Init ident e1 -> do
+    var <- getVariable ident
+    let type' = getType var
+    (subtype', e1') <- checkExpr e1
+    subtype' <=! type'
+    return $ Init ident e1'
+  Ass lval e1 -> do
+    (type', ELVal lval') <- checkExpr (ELVal lval)
+    (subtype, e1')       <- checkExpr e1
+    subtype <=! type'
+    return $ Ass lval' e1'
+  Incr lval -> do
+    (type', ELVal lval') <- checkExpr (ELVal lval)
+    type' <=! IntT
+    return $ Incr lval'
+  Decr lval -> do
+    (type', ELVal lval') <- checkExpr (ELVal lval)
+    type' <=! IntT
+    return $ Decr lval'
+  Cond e1 s1 -> do
+    (type', e1') <- checkExpr e1
+    type' <=! BooleanT
+    checkStmt (Cond e1' s1)
+  CondElse e1 s1 s2 -> do
+    (type', e1') <- checkExpr e1
+    type' <=! BooleanT
+    checkStmt (CondElse e1' s1 s2)
+  While e1 s1 -> do
+    (type', e1') <- checkExpr e1
+    type' <=! BooleanT
+    checkStmt (While e1' s1)
+  For _ _ _ _ -> arraysNotSupportedYet
+  SExp e1 -> do
+    (_, e1') <- checkExpr e1
+    return $ SExp e1'
+  _  -> checkStmt x
+
+checkExpr :: Expr -> CheckM (Type, Expr)
+checkExpr e1 = do
+  (t, e) <- checkExprInner e1
+  observeStep e1
+  return (t, e)
+
+checkExprInner :: Expr -> CheckM (Type, Expr)
+checkExprInner e = CEContext e $$ let nc typ = return (typ, e) in case e of
   ELitInt _       -> nc IntT
   ELitTrue        -> nc BooleanT
   ELitFalse       -> nc BooleanT
   EString _       -> nc StringT
 
-  ELitNull t      -> case t of
-      ClassT ident -> getClass ident >> nc t
-      ArrayT _     -> error "TODO nulls as arrays"
-      _            -> throwTypeError $ InvalidTypeOfNullLit t
-
   EApp ident args -> do
     funType <- getFunction ident
     let FunT resType expected = getType funType
-    argTypes <- mapM checkType args
+    argTypes <- mapM checkExpr args
     let (actual, args') = unzip argTypes
-    zipWithM_ ensureCompatible actual expected
+    when (length actual /= length expected) $
+      throwTypeError (InvalidNumberOfArguments actual expected)
+    zipWithM_ (<=!) actual expected
     return (resType, EApp ident args')
 
-  ELVal (LVar ident) -> getVariable ident >>= nc . getType
+  ELVal (LVar ident)  -> getVariable ident >>= nc . getType
 
-  ELVal (LArrAcc arr idx) -> do
-    (tarr, arr') <- checkType arr
-    (tidx, idx') <- checkType idx
-    ensureCompatible' tidx IntT $ TEArrIdx tidx
-    case tarr of
-      ArrayT t -> return (t, ELVal $ LArrAcc arr' idx')
-      _        -> throwTypeError (TEArr tarr)
-
-  ELVal (LClsAcc obj fieldIdent) -> do
-    (tobj, obj') <- checkType obj
-    case tobj of
-      ClassT tident -> do
-        cls   <- getClass tident
-        field <- getField fieldIdent cls
-        return (getType field, ELVal (LClsAcc obj' fieldIdent))
-      StringT ->
-        if fieldIdent == lengthIdent then
-          return (IntT, ELVal (LClsAcc obj' fieldIdent))
-        else
-          throwTypeError $ FieldOfString fieldIdent
-      VoidT    -> throwTypeError $ FieldOfBuiltIn tobj
-      IntT     -> throwTypeError $ FieldOfBuiltIn tobj
-      BooleanT -> throwTypeError $ FieldOfBuiltIn tobj
-      ArrayT _ ->
-        if fieldIdent == lengthIdent then
-          return (IntT, ELVal (LClsAcc obj' fieldIdent))
-        else
-          throwTypeError $ FieldOfArray fieldIdent
-      FunT{} -> throwTypeError $ FieldOfFunction fieldIdent
-
-  ClsApply _ _ _     -> error "TODO"
-
-  ArrAlloc telem e1  -> do
-    (typ, e1') <- checkType e1
-    ensureCompatible' typ IntT $ TEArrAlocLen typ
-    return (ArrayT telem, ArrAlloc telem e1')
-
-  ClsAlloc typ       -> case typ of
-    ClassT clsIdent -> nc typ
-    _               -> throwTypeError $ ObjAllocBadType typ
+  -- Support for objects and arrays was not
+  -- finished yet so it was temporarily removed.
+  ELitNull _          -> objectsNotSupportedYet
+  ELVal (LArrAcc _ _) -> arraysNotSupportedYet
+  ELVal (LClsAcc _ _) -> objectsNotSupportedYet
+  ClsApply _ _ _      -> objectsNotSupportedYet
+  ArrAlloc _ _        -> arraysNotSupportedYet
+  ClsAlloc _          -> objectsNotSupportedYet
 
   Neg e1 -> do
-    (typ, e1') <- checkType e1
-    ensureCompatible typ IntT
+    (typ, e1') <- checkExpr e1
+    typ <=! IntT
     return (IntT, e1')
 
   Not e1 -> do
-    (typ, e1') <- checkType e1
-    ensureCompatible typ BooleanT
+    (typ, e1') <- checkExpr e1
+    typ <=! BooleanT
     return (BooleanT, e1')
 
   EBinOp e1 op e2 -> do
-    (t1, e1') <- checkType e1
-    (t2, e2') <- checkType e2
-    let ensureEq t1' t2' ret = ensureCompatible t1 t1' >> ensureCompatible t2 t2' >> return (ret, EBinOp e1' op e2')
-    let tII_I = ensureEq IntT  IntT  IntT
-    let tII_B = ensureEq IntT  IntT  BooleanT
+    (t1, e1') <- checkExpr e1
+    (t2, e2') <- checkExpr e2
+    let ensureEq t1' t2' ret = (t1 <=! t1') >> (t2 <=! t2') >> return (ret, EBinOp e1' op e2')
+    let tII_I = ensureEq     IntT     IntT     IntT
+    let tII_B = ensureEq     IntT     IntT BooleanT
     let tBB_B = ensureEq BooleanT BooleanT BooleanT
     case op of
       Minus -> tII_I
@@ -112,13 +174,37 @@ checkType e = CEContext e $$ let nc typ = return (typ, e) in case e of
       GE    -> tII_B
       AND   -> tBB_B
       OR    -> tBB_B
-      EQU   -> error "TODO =="
-      NE    -> error "TODO !="
-      Plus  -> error "TODO Plus"
+      EQU   -> do
+        when (t1 /= t2) $
+          throwTypeError (IncompatibleTypes t1 t2)
+        case t1 of
+          IntT     -> return (BooleanT, EBinOp e1' EQU_Int  e2')
+          BooleanT -> return (BooleanT, EBinOp e1' EQU_Bool e2')
+          StringT  -> return (BooleanT, EBinOp e1' EQU_Str  e2')
+          ArrayT _ -> arraysNotSupportedYet
+          ClassT _ -> objectsNotSupportedYet
+          _        -> throwTypeError $ InvalidOperandTypes t1 t2
+      NE   -> do
+        when (t1 /= t2) $
+          throwTypeError (IncompatibleTypes t1 t2)
+        case t1 of
+          IntT     -> return (BooleanT, EBinOp e1' NE_Int  e2')
+          BooleanT -> return (BooleanT, EBinOp e1' NE_Bool e2')
+          StringT  -> return (BooleanT, EBinOp e1' NE_Str  e2')
+          ArrayT _ -> arraysNotSupportedYet
+          ClassT _ -> objectsNotSupportedYet
+          _        -> throwTypeError $ InvalidOperandTypes t1 t2
+      Plus  -> do
+         when (t1 /= t2) $
+           throwTypeError (IncompatibleTypes t1 t2)
+         case t1 of
+           IntT     -> return (IntT, EBinOp e1' Plus_Int e2')
+           StringT  -> return (StringT, EBinOp e1' Plus_Str e2')
+           _        -> throwTypeError $ InvalidOperandTypes t1 t2
+
       _     -> error "TODO Other?"
 
-
-  _ -> error "Should not appear at this stage"
+  _ -> throwCheckError $ OtherException "Pattern not matched"
 
 -- Helper functions
 
@@ -128,7 +214,8 @@ c1 `isSuperclassOf` (SubClass _ super _ _) =
   c1 == super || c1 `isSuperclassOf` super
 
 compatible :: Type -> Type -> CheckM Bool
-compatible t1 t2 = return $ t1 == t2 -- TODO inherritance
+compatible subtype type' =
+  return $ subtype == type'
 
 ensureCompatible' :: Type -> Type -> TypeError -> CheckM ()
 ensureCompatible' t1 t2 err = do
@@ -136,41 +223,16 @@ ensureCompatible' t1 t2 err = do
   unless res (throwTypeError err)
   return ()
 
+infix 0 <=!
+(<=!) :: Type -> Type -> CheckM ()
+(<=!) = ensureCompatible
+
+infix 0 ~~!
+(~~!) :: Type -> Type -> CheckM ()
+t1 ~~! t2 = do
+  (t1 <=! t2) `catchError` (const $ (t2 <=! t1))
+
 ensureCompatible :: Type -> Type -> CheckM ()
-ensureCompatible t1 t2 = ensureCompatible' t1 t2 (IncompatibleTypes t1 t2)
+ensureCompatible subtype type' = ensureCompatible' subtype type' (IncompatibleTypes subtype type')
 
-getVariable :: Ident -> CheckM Variable
-getVariable ident = do
-  e <- use vEnv
-  case M.lookup ident e of
-    Just var -> return var
-    Nothing  -> throwTypeError $ VariableNotFound ident
 
-getClass :: Ident -> CheckM Class
-getClass ident = do
-  e <- use cEnv
-  case M.lookup ident e of
-    Just cls -> return cls
-    Nothing  -> throwTypeError $ ClassNotFound ident
-
-getClassItem :: ((Env' Variable, Env' Function) -> Env' c) -> (Ident -> Class -> TypeError) -> Ident -> Class -> Class -> CheckM c
-getClassItem _ err ident orig (Object) =
-  throwTypeError $ err ident orig
-
-getClassItem component err ident orig (SubClass _ super fiEnv mEnv) =
-  case M.lookup ident (component (fiEnv, mEnv)) of
-    Just method -> return method
-    Nothing     -> getClassItem component err ident orig super
-
-getField :: Ident -> Class -> CheckM Variable
-getField ident cls = getClassItem fst FieldNotFound ident cls cls
-
-getMethod :: Ident -> Class -> CheckM Function
-getMethod ident cls = getClassItem snd MethodNotFound ident cls cls
-
-getFunction :: Ident -> CheckM Function
-getFunction ident = do
-  e <- use fEnv
-  case M.lookup ident e of
-    Just fun -> return fun
-    Nothing  -> throwTypeError $ FunctionNotFound ident
