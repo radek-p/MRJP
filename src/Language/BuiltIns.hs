@@ -16,14 +16,6 @@ builtInIdents = map Ident ["int", "boolean", "string", "void"]
 lengthIdent :: Ident
 lengthIdent = Ident "length"
 
-defaultValue :: Type -> Expr
-defaultValue t = case t of
-  IntT     -> ELitInt 0
-  BooleanT -> ELitFalse
-  StringT  -> EString ""
-  VoidT    -> error "Assert: Tried to access default value of void type"
-  _        -> ELitNull t
-
 
 data Variable
   = Variable Type Ident

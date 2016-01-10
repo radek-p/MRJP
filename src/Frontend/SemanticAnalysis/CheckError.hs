@@ -20,6 +20,7 @@ data CEType
   | NestedVariableDeclaration
   | TypeError TypeError
   | FeatureNotSupported String
+  | MissingReturnStatement Ident
 
 data TypeError
   = ClassNotFound    Ident
@@ -64,6 +65,7 @@ instance Show CEType where
     RestrictedIdentifier i     -> "Restricted identifier  " ++ printTree i ++ "  was used."
     TypeError e                -> "Type error: " ++ show e
     FeatureNotSupported s      -> "Feature is not supported yet: " ++ s
+    MissingReturnStatement _   -> "Missing return statement."
 
 showFnDef :: FnDef -> String
 showFnDef (FnDef typ ident args _) =

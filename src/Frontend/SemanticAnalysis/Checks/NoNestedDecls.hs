@@ -15,7 +15,7 @@ checkNND = checkNND' False
 checkNND' :: Bool -> Tree a -> CheckM ()
 checkNND' allow = composOpM_ (checkNode allow)
 
-checkNode :: forall a. Bool -> Tree a -> CheckM ()
+checkNode :: Bool -> Tree a -> CheckM ()
 checkNode allow x = CEContext x $$ do
   case x of
     Block _ -> checkNND' True x

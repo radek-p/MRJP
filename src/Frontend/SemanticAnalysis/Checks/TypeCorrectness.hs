@@ -10,16 +10,6 @@ import Frontend.SemanticAnalysis.Monad
 import Frontend.SemanticAnalysis.CheckError
 import Frontend.Parser.AbsLatte
 import Language.BuiltIns
-import Frontend.Utility.PrettyPrinting
-
-
--- Features that are not required at this stage
--- were explicitly turned off.
-objectsNotSupportedYet :: CheckM a
-objectsNotSupportedYet = throwCheckError $ FeatureNotSupported "objects"
-
-arraysNotSupportedYet :: CheckM a
-arraysNotSupportedYet = throwCheckError $ FeatureNotSupported "arrays"
 
 
 -- Check type correctness of program and replaces overloaded operators with
@@ -27,8 +17,13 @@ arraysNotSupportedYet = throwCheckError $ FeatureNotSupported "arrays"
 checkTC :: Program -> CheckM (Program)
 checkTC prog = checkStmt prog
 
+
+-----------------------------------
+-- Type analysis for statements  --
+-----------------------------------
+
 checkStmt :: Tree a -> CheckM (Tree a)
-checkStmt = composOpM (\x -> observeStep x >> checkStmtInner x)
+checkStmt = composOpM (\x -> observeStep x >> (CEContext x $$ checkStmtInner x))
 
 newScope :: CheckM a -> CheckM a
 newScope m = do
@@ -54,7 +49,7 @@ declVars lst =
   mapM_ (declVar) lst
 
 checkStmtInner :: Tree a -> CheckM (Tree a)
-checkStmtInner x = CEContext x $$ case x of
+checkStmtInner x = case x of
   ClsDef{} -> objectsNotSupportedYet
   FnDef retType _ args _ -> newScope $ do
     declVars [(typ, ident) | Arg typ ident <- args]
@@ -112,101 +107,110 @@ checkStmtInner x = CEContext x $$ case x of
     return $ SExp e1'
   _  -> checkStmt x
 
+
+-----------------------------------
+-- Type analysis for expressions --
+-----------------------------------
+
 checkExpr :: Expr -> CheckM (Type, Expr)
-checkExpr e1 = do
+checkExpr e1 = CEContext e1 $$  do
   (t, e) <- checkExprInner e1
   observeStep e1
   return (t, e)
 
 checkExprInner :: Expr -> CheckM (Type, Expr)
-checkExprInner e = CEContext e $$ let nc typ = return (typ, e) in case e of
-  ELitInt _       -> nc IntT
-  ELitTrue        -> nc BooleanT
-  ELitFalse       -> nc BooleanT
-  EString _       -> nc StringT
+checkExprInner e1@(ELitInt _) = return (    IntT, e1)
+checkExprInner e1@(ELitTrue ) = return (BooleanT, e1)
+checkExprInner e1@(ELitFalse) = return (BooleanT, e1)
+checkExprInner e1@(EString _) = return ( StringT, e1)
 
-  EApp ident args -> do
-    funType <- getFunction ident
-    let FunT resType expected = getType funType
-    argTypes <- mapM checkExpr args
-    let (actual, args') = unzip argTypes
-    when (length actual /= length expected) $
-      throwTypeError (InvalidNumberOfArguments actual expected)
-    zipWithM_ (<=!) actual expected
-    return (resType, EApp ident args')
+checkExprInner (EApp ident args) = do
+  funType  <- getFunction ident
+  let FunT resType expected = getType funType
+  argTypes <- mapM checkExpr args
+  let (actual, args') = unzip argTypes
+  when (length actual /= length expected) $
+    throwTypeError (InvalidNumberOfArguments actual expected)
+  zipWithM_ (<=!) actual expected
+  return (resType, EApp ident args')
 
-  ELVal (LVar ident)  -> getVariable ident >>= nc . getType
+checkExprInner e1@(ELVal (LVar ident)) = do
+  var <- getVariable ident
+  return (getType var, e1)
 
-  -- Support for objects and arrays was not
-  -- finished yet so it was temporarily removed.
-  ELitNull _          -> objectsNotSupportedYet
-  ELVal (LArrAcc _ _) -> arraysNotSupportedYet
-  ELVal (LClsAcc _ _) -> objectsNotSupportedYet
-  ClsApply _ _ _      -> objectsNotSupportedYet
-  ArrAlloc _ _        -> arraysNotSupportedYet
-  ClsAlloc _          -> objectsNotSupportedYet
+-- Support for objects and arrays was not
+-- finished yet so it was temporarily removed.
+checkExprInner (ELitNull _         ) = objectsNotSupportedYet
+checkExprInner (ELVal (LClsAcc _ _)) = objectsNotSupportedYet
+checkExprInner (ClsApply _ _ _     ) = objectsNotSupportedYet
+checkExprInner (ClsAlloc _         ) = objectsNotSupportedYet
 
-  Neg e1 -> do
-    (typ, e1') <- checkExpr e1
-    typ <=! IntT
-    return (IntT, e1')
+checkExprInner (ArrAlloc _ _       ) = arraysNotSupportedYet
+checkExprInner (ELVal (LArrAcc _ _)) = arraysNotSupportedYet
 
-  Not e1 -> do
-    (typ, e1') <- checkExpr e1
-    typ <=! BooleanT
-    return (BooleanT, e1')
+checkExprInner (Neg e1) = do
+  (typ, e1') <- checkExpr e1
+  typ <=! IntT
+  return (IntT, Neg e1')
 
-  EBinOp e1 op e2 -> do
-    (t1, e1') <- checkExpr e1
-    (t2, e2') <- checkExpr e2
-    let ensureEq t1' t2' ret = (t1 <=! t1') >> (t2 <=! t2') >> return (ret, EBinOp e1' op e2')
-    let tII_I = ensureEq     IntT     IntT     IntT
-    let tII_B = ensureEq     IntT     IntT BooleanT
-    let tBB_B = ensureEq BooleanT BooleanT BooleanT
-    case op of
-      Minus -> tII_I
-      Times -> tII_I
-      Div   -> tII_I
-      Mod   -> tII_I
-      LTH   -> tII_B
-      LE    -> tII_B
-      GTH   -> tII_B
-      GE    -> tII_B
-      AND   -> tBB_B
-      OR    -> tBB_B
-      EQU   -> do
-        when (t1 /= t2) $
-          throwTypeError (IncompatibleTypes t1 t2)
-        case t1 of
-          IntT     -> return (BooleanT, EBinOp e1' EQU_Int  e2')
-          BooleanT -> return (BooleanT, EBinOp e1' EQU_Bool e2')
-          StringT  -> return (BooleanT, EBinOp e1' EQU_Str  e2')
-          ArrayT _ -> arraysNotSupportedYet
-          ClassT _ -> objectsNotSupportedYet
-          _        -> throwTypeError $ InvalidOperandTypes t1 t2
-      NE   -> do
-        when (t1 /= t2) $
-          throwTypeError (IncompatibleTypes t1 t2)
-        case t1 of
-          IntT     -> return (BooleanT, EBinOp e1' NE_Int  e2')
-          BooleanT -> return (BooleanT, EBinOp e1' NE_Bool e2')
-          StringT  -> return (BooleanT, EBinOp e1' NE_Str  e2')
-          ArrayT _ -> arraysNotSupportedYet
-          ClassT _ -> objectsNotSupportedYet
-          _        -> throwTypeError $ InvalidOperandTypes t1 t2
-      Plus  -> do
-         when (t1 /= t2) $
-           throwTypeError (IncompatibleTypes t1 t2)
-         case t1 of
-           IntT     -> return (IntT, EBinOp e1' Plus_Int e2')
-           StringT  -> return (StringT, EBinOp e1' Plus_Str e2')
-           _        -> throwTypeError $ InvalidOperandTypes t1 t2
+checkExprInner (Not e1) = do
+  (typ, e1') <- checkExpr e1
+  typ <=! BooleanT
+  return (BooleanT, Not e1')
 
-      _     -> error "TODO Other?"
+checkExprInner (EBinOp e1 op e2) = do
+  (t1, e1') <- checkExpr e1
+  (t2, e2') <- checkExpr e2
+  let ensureEq t1' t2' ret = (t1 <=! t1') >> (t2 <=! t2') >> return (ret, EBinOp e1' op e2')
+  let tII_I = ensureEq     IntT     IntT     IntT
+  let tII_B = ensureEq     IntT     IntT BooleanT
+  let tBB_B = ensureEq BooleanT BooleanT BooleanT
+  case op of
+    Minus -> tII_I
+    Times -> tII_I
+    Div   -> tII_I
+    Mod   -> tII_I
+    LTH   -> tII_B
+    LE    -> tII_B
+    GTH   -> tII_B
+    GE    -> tII_B
+    AND   -> tBB_B
+    OR    -> tBB_B
+    EQU   -> do
+      when (t1 /= t2) $
+        throwTypeError (IncompatibleTypes t1 t2)
+      case t1 of
+        IntT     -> return (BooleanT, EBinOp e1' EQU_Int  e2')
+        BooleanT -> return (BooleanT, EBinOp e1' EQU_Bool e2')
+        StringT  -> return (BooleanT, EBinOp e1' EQU_Str  e2')
+        ArrayT _ -> arraysNotSupportedYet
+        ClassT _ -> objectsNotSupportedYet
+        _        -> throwTypeError $ InvalidOperandTypes t1 t2
+    NE   -> do
+      when (t1 /= t2) $
+        throwTypeError (IncompatibleTypes t1 t2)
+      case t1 of
+        IntT     -> return (BooleanT, EBinOp e1' NE_Int  e2')
+        BooleanT -> return (BooleanT, EBinOp e1' NE_Bool e2')
+        StringT  -> return (BooleanT, EBinOp e1' NE_Str  e2')
+        ArrayT _ -> arraysNotSupportedYet
+        ClassT _ -> objectsNotSupportedYet
+        _        -> throwTypeError $ InvalidOperandTypes t1 t2
+    Plus  -> do
+       when (t1 /= t2) $
+         throwTypeError (IncompatibleTypes t1 t2)
+       case t1 of
+         IntT     -> return (IntT, EBinOp e1' Plus_Int e2')
+         StringT  -> return (StringT, EBinOp e1' Plus_Str e2')
+         _        -> throwTypeError $ InvalidOperandTypes t1 t2
+    _     -> error "TODO Other?"
 
-  _ -> throwCheckError $ OtherException "Pattern not matched"
+checkExprInner _ = throwCheckError $ OtherException "Pattern not matched"
 
--- Helper functions
+
+-------------------------
+-- Helper functions    --
+-------------------------
 
 isSuperclassOf :: Class -> Class -> Bool
 _  `isSuperclassOf` Object = False

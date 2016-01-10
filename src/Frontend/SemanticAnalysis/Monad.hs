@@ -23,12 +23,18 @@ data RunMode
   | Debug
   deriving Eq
 
+class HasRunMode a where
+  runMode :: Lens' a RunMode
+
 data CheckState
   = CheckState
       Env             -- environment
       Type            -- return type for checked function
       (Env' Variable) -- variables defined in current scope
       RunMode         -- run mode
+
+instance HasRunMode CheckState where
+  runMode = lens (\(CheckState _ _ _ rm) -> rm) (\(CheckState a b c _ ) rm -> CheckState a b c rm)
 
 
 --------------------------------------
@@ -50,9 +56,6 @@ returnType = lens (\(CheckState _ rt _ _) -> rt) (\(CheckState ev _ sc rm) rt ->
 
 currentScope :: Lens' CheckState (Env' Variable)
 currentScope = lens (\(CheckState _ _ sc _) -> sc) (\(CheckState ev rt _ rm) sc -> CheckState ev rt sc rm)
-
-runMode :: Lens' CheckState RunMode
-runMode = lens (\(CheckState _ _ _ rm) -> rm) (\(CheckState ev rt sc _) rm -> CheckState ev rt sc rm)
 
 vEnv :: Lens' CheckState (Env' Variable)
 fEnv :: Lens' CheckState (Env' Function)
@@ -119,24 +122,36 @@ infixl 0 $$
 ($$) :: CEContext -> CheckM' a b -> CheckM' a b
 x $$ m = m `catchError` (\(CheckError et ctx) -> throwError $ CheckError et (x : ctx))
 
-observeStep :: Tree a -> CheckM ()
+observeStep :: (Show s, HasRunMode s) => Tree a -> CheckM' s ()
 observeStep x = do
   mode <- use runMode
   when (mode == Debug) $
     observeStepInner x
   return ()
 
-observeStepInner :: Tree a -> CheckM ()
+instance Show CheckState where
+  show st = unlines [
+      printBoldWhite "venv:        " ++ show (st ^. vEnv        ),
+      printBoldWhite "scope:       " ++ show (st ^. currentScope)
+    ]
+
+observeStepInner :: (Show s, HasRunMode s) => Tree a -> CheckM' s ()
 observeStepInner x = do
-  venv  <- use vEnv
-  scope <- use currentScope
+  st <- get
   liftIO $ putStrLn (printBoldWhite "constructor: " ++ (words (show x) !! 0))
   liftIO $ putStrLn (printBoldWhite "tree:        " ++ printTree x)
-  liftIO $ putStrLn (printBoldWhite "venv:        " ++ show venv)
-  liftIO $ putStrLn (printBoldWhite "scope:       " ++ show scope)
+  liftIO $ putStrLn (show st)
   liftIO $ putStrLn ("#########################################")
   line <- liftIO $ getLine
   when (line == "e") $
     throwCheckError $ OtherException "Interrupt"
   when (line == "r") (runMode .= Normal)
   return ()
+
+-- Features that are not required at this stage
+-- were explicitly turned off.
+objectsNotSupportedYet :: CheckM' s a
+objectsNotSupportedYet = throwCheckError $ FeatureNotSupported "objects"
+
+arraysNotSupportedYet :: CheckM' s a
+arraysNotSupportedYet = throwCheckError $ FeatureNotSupported "arrays"
