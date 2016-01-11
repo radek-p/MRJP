@@ -1,0 +1,21 @@
+int main(int a, int b, int c) {
+        int n = 2;
+        {
+            int n = 10;
+            n++;
+        {
+            int n = 20;
+            n = n * n - 1;
+            n=n;
+        {
+            int n = 30;
+            n = n + 1;
+            n=n;
+        }
+            n--;
+            n=n;
+        }
+            printInt(n);
+        }
+            return n * n / n;
+        }

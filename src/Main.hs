@@ -6,11 +6,12 @@ import System.Exit ( exitFailure, exitSuccess )
 import Control.Monad.Except
 import Control.Monad.State
 
+import Utility.PrettyPrinting
 import Frontend.SemanticAnalysis.Runner
-import Frontend.Utility.PrettyPrinting
 import Frontend.Parser.ParLatte
 import Frontend.Parser.AbsLatte
 import Frontend.Parser.ErrM
+import Backend.CodeEmitter.Runner
 
 
 type Verbosity = Int
@@ -39,10 +40,15 @@ compileProgram :: Program -> IO ()
 compileProgram tree = do
   putStrLn "\n[ OK ] Parsing."
   putStrLn $ "Parsed:\n" ++ printTree tree
-  checkRes <-  runExceptT (evalStateT (checkProgram tree) undefined)
-  case checkRes of
-    Left err -> putStrLn (show err) >> exitFailure
-    Right () -> putStrLn "[ OK ] Program checked."
+  checkRes <- runExceptT (runStateT (checkProgram tree) undefined)
+  (tree', _) <- case checkRes of
+    Left  err   -> putStrLn (show err) >> exitFailure
+    Right x -> return x
+  putStrLn "[ OK ] Program checked."
+  asmCode <- genASM tree'
+  putStrLn asmCode
+  putStrLn "DONE"
+
 
 showTree :: Int -> Program -> IO ()
 showTree v tree = do

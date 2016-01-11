@@ -4,7 +4,7 @@ module Frontend.SemanticAnalysis.CheckError where
 import Data.List ( intercalate )
 
 import Frontend.Parser.AbsLatte
-import Frontend.Utility.PrettyPrinting
+import Utility.PrettyPrinting
 import Language.BuiltIns
 
 

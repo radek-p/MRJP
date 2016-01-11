@@ -8,7 +8,7 @@ import qualified Data.Map as M
 import Language.BuiltIns
 import Frontend.Parser.AbsLatte
 import Frontend.SemanticAnalysis.CheckError
-import Frontend.Utility.PrettyPrinting
+import Utility.PrettyPrinting
 
 
 --------------------------------------

@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs #-}
-module Frontend.Utility.PrettyPrinting where
+module Utility.PrettyPrinting where
 
 import qualified Frontend.Parser.PrintLatte as P
 import Frontend.Parser.AbsLatte

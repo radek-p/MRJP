@@ -8,7 +8,7 @@ import qualified Data.Map as M
 import Language.BuiltIns
 import Frontend.Parser.AbsLatte
 import Frontend.SemanticAnalysis.Monad
-import Frontend.Utility.PrettyPrinting
+import Utility.PrettyPrinting
 
 import Frontend.SemanticAnalysis.Checks.CyclicInherritance
 import Frontend.SemanticAnalysis.Checks.UniqueIdents
@@ -20,8 +20,11 @@ import Frontend.SemanticAnalysis.Transformations.ConstantPropagation hiding ( in
 import Frontend.SemanticAnalysis.Transformations.SimpleElimination
 import Frontend.SemanticAnalysis.Checks.ProperReturnStatements
 
+import Backend.CodeEmitter.Transformations.UnifyVariables -- TODO maybe move to backend runer
 
-checkProgram :: Program -> CheckM ()
+
+
+checkProgram :: Program -> CheckM Program
 checkProgram p0 = do
   -- set initial state
   put initialState
@@ -39,17 +42,17 @@ checkProgram p0 = do
   buildEnv p1
   liftIO $ putStrLn "\r[ OK ] Generating environment of types."
 
-  p2 <- checkTC p1
   -- second pass of checks
-
+  p2 <- checkTC p1
   p3 <- propagateConstants p2
---  p3 <- simpleElimination p2
-  liftIO $ putStrLn (printTree p3)
-
+  -- p3 <- simpleElimination p2
   checkRS p3
-  liftIO $ putStrLn "[ OK ] Second pass of static checks."
+  let p4 = unifyVariables p3
 
-  return ()
+  liftIO $ putStrLn "[ OK ] Second pass of static checks."
+  liftIO $ putStrLn (printTree p4)
+
+  return p4
 
 initialState :: CheckState
 initialState = CheckState initialEnv undefined (M.empty) Normal
