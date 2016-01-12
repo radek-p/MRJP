@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs #-}
-module Backend.CodeEmitter.Helpers where
+module Backend.X86.Helpers where
 
 import Control.Monad.Identity
 import Control.Monad.State
@@ -7,7 +7,7 @@ import Control.Lens
 import qualified Data.Map as M
 
 import Frontend.Parser.AbsLatte
-import Backend.CodeEmitter.DataTypes
+import Backend.X86.DataTypes
 
 -----------------------------------------------------
 -- Calculate needed stack size for local variables --
@@ -62,7 +62,7 @@ assignFrameOffsets x = case x of
     declVar ident
   NoInit ident ->
     declVar ident
-  BStmt b ->
+  BStmt _ ->
     newScope $ composOpM_ assignFrameOffsets x
   _ -> composOpM_ assignFrameOffsets x
 

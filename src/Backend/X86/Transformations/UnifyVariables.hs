@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs #-}
-module Backend.CodeEmitter.Transformations.UnifyVariables where
+module Backend.X86.Transformations.UnifyVariables where
 
 import Prelude hiding ( id )
 import Control.Monad.State
@@ -10,10 +10,13 @@ import qualified Data.Map as M
 import Frontend.Parser.AbsLatte
 
 
+-------------------------------------------------------
+-- Make names of variables unique by appending an id --
+-------------------------------------------------------
+
 type IdxEnv = M.Map Ident Integer
 type UnifyState = (IdxEnv, Integer)
 type UnifyM a = StateT UnifyState Identity a
-
 
 unifyVariables :: Program -> Program
 unifyVariables x = runIdentity (evalStateT (unifyVariables' x) (M.empty, 0))
@@ -62,9 +65,9 @@ unifyVariables' x = case x of
   NoInit ident   -> do
     ident' <- getUniqueIdent ident
     return $ NoInit ident'
-  Init   ident x -> do
+  Init   ident e1 -> do
     ident' <- getUniqueIdent ident
-    return $ Init ident' x
+    return $ Init ident' e1
   LVar ident -> do
     ident' <- getUniqueIdent ident
     return $ LVar ident'

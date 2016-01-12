@@ -11,7 +11,7 @@ import Frontend.SemanticAnalysis.Runner
 import Frontend.Parser.ParLatte
 import Frontend.Parser.AbsLatte
 import Frontend.Parser.ErrM
-import Backend.CodeEmitter.Runner
+import Backend.X86.Runner
 
 
 type Verbosity = Int
@@ -38,16 +38,16 @@ parseProgram programText = do
 
 compileProgram :: Program -> IO ()
 compileProgram tree = do
-  putStrLn "\n[ OK ] Parsing."
-  putStrLn $ "Parsed:\n" ++ printTree tree
+  putStrLn "[ 1/1 ] Parsing."
+
   checkRes <- runExceptT (runStateT (checkProgram tree) undefined)
   (tree', _) <- case checkRes of
     Left  err   -> putStrLn (show err) >> exitFailure
     Right x -> return x
-  putStrLn "[ OK ] Program checked."
+
   asmCode <- genASM tree'
   putStrLn asmCode
-  putStrLn "DONE"
+  putStrLn "[ OK  ] Done."
 
 
 showTree :: Int -> Program -> IO ()

@@ -6,11 +6,26 @@ import Frontend.Parser.AbsLatte
 import Data.List ( intercalate )
 
 
+lines' :: String -> [String]
+lines' [] = [[]]
+lines' s = case span (/='\n') s of
+  (sh, _:st) -> sh : (lines' st)
+  (sh,   []) -> [ sh ]
+
+unlines' :: [String] -> String
+unlines' = intercalate "\n"
+
+prefixLines :: String -> String -> String
+prefixLines pref str = unlines' [ pref ++ s | s <- lines' str ]
+
+indent :: Int -> String -> String
+indent n = prefixLines [' ' | _ <- [1..n]]
+
 printColorSingle :: String -> String -> String
 printColorSingle ccode s = ccode ++ s ++ "\x1b[0m"
 
 printColor :: String -> String -> String
-printColor ccode s = intercalate "\n" [ printColorSingle ccode l | l <- lines s ]
+printColor ccode s = unlines' [ printColorSingle ccode l | l <- lines' s ]
 
 printRed :: String -> String
 printRed = printColor "\x1b[31m"

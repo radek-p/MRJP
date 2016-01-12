@@ -1,16 +1,18 @@
-module Backend.CodeEmitter.GasmPrint where
+module Backend.X86.GasmPrint where
 
-import Backend.CodeEmitter.ASM
-import Backend.CodeEmitter.DataTypes
+import Utility.PrettyPrinting
+import Backend.X86.DataTypes
 
 
 class GasmPrint a where
   printGasm :: a -> String
 
 instance GasmPrint Statement where
-  printGasm (SInstr instr)   = space ++ printGasm instr ++ "\n"
+  printGasm (SInstr instr)   = (indent' $ printGasm instr) ++ "\n"
   printGasm (SLabel label)   = "\n" ++ printGasm label ++ ":\n"
-  printGasm (SDirective)     = "TODO directives\n"
+  printGasm (SDirective d)   = (indent' $ printGasm d) ++ "\n"
+  printGasm (SComment _ [])  = "\n"
+  printGasm (SComment i c)   = if i then (indent' $ prefixLines "# " c) ++ "\n" else "\n/* " ++ c ++ " */"
 
 instance GasmPrint Instr where
   printGasm (Instr0A op)       =
@@ -19,6 +21,10 @@ instance GasmPrint Instr where
     align (printGasm op) ++ "  " ++ (printGasm l1)
   printGasm (Instr2A op l1 l2) =
     align (printGasm op) ++ "  " ++ align (printGasm l1) ++ ", " ++ (printGasm l2)
+
+instance GasmPrint Directive where
+  printGasm (DString s) =
+    ".string " ++ show s
 
 instance GasmPrint Operation where
   printGasm op = case op of
@@ -29,7 +35,11 @@ instance GasmPrint Operation where
     Jmp   -> "jmp"
     PushL -> "pushl"
     PopL  -> "popl"
-    Ret   -> "ret"
+    Ret_  -> "ret"
+    Test  -> "test"
+    Je    -> "je"
+    Neg_  -> "neg"
+    Call  -> "call"
 
 instance GasmPrint Reg where
   printGasm r = "%" ++ case r of
@@ -54,8 +64,9 @@ instance GasmPrint Loc where
     LReg   r       -> printGasm r
     LFrRel off     -> printGasm off ++ "(%ebp)"
     LAbs   ptr     -> printGasm ptr
-    LRel   ptr off -> printGasm off ++ "(" ++ printGasm ptr ++ ")"
+    LRel   ptr off -> (if (off == PointerOffset 0) then "" else printGasm off) ++ "(" ++ printGasm ptr ++ ")"
     LImm   n       -> "$" ++ show n
+    LLbl   lbl     -> printGasm lbl
 
 instance GasmPrint Label where
   printGasm (Label l) = l
@@ -70,5 +81,5 @@ alignTo n s =
 align :: String -> String
 align = alignTo defaultAlign
 
-space :: String
-space = align "" ++ "  "
+indent' :: String -> String
+indent' = indent defaultAlign

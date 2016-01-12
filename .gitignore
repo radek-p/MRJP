@@ -79,3 +79,4 @@ src/Frontend/Parser/TestLatte.hs
 src/Frontend/Parser/DocLatte.tex
 src/Frontend/Parser/DocLatte.txt
 
+lib/runtime.o

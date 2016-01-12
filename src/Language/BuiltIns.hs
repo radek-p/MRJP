@@ -77,8 +77,17 @@ builtInFunctions = [
     BuiltInFn (FunT VoidT   [IntT]   ) (Ident "printInt"),
     BuiltInFn (FunT VoidT   [StringT]) (Ident "printString"),
     BuiltInFn (FunT IntT    []       ) (Ident "readInt"),
-    BuiltInFn (FunT StringT []       ) (Ident "readString")
+    BuiltInFn (FunT StringT []       ) (Ident "readString"),
+    BuiltInFn (FunT VoidT   []       ) (Ident "error")
   ]
+
+defaultValue :: Type -> Expr
+defaultValue t = case t of
+  IntT     -> ELitInt     0
+  BooleanT -> ELitFalse
+  StringT  -> EString  ""
+  VoidT    -> error "Void has no default value"
+  _        -> error "Default values of other types were not specified yet."
 
 initialFEnv :: Env' Function
 initialFEnv = M.fromList [
