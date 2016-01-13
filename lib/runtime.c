@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "runtime.h"
 
-char *liblatteConcatStrings(char *s1, char *s2) {
+char *liblatteConcat(char *s1, char *s2) {
 
     char *result;
     size_t new_length;
