@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+dir=$(dirname $0)
+latc=${dir}/dist/build/LatteC/LatteC
+
+if [ ! -f ${latc} ]; then
+  printf "ERROR\n" >&2;
+  echo "${latc} executable does not exist. Please use make to build it first.";
+  exit 1;
+fi
+
+if (( $# != 1 )); then
+  printf "ERROR\n" >&2;
+  echo "Error: Wrong number of arguments. Exactly one file name was expected.";
+  exit 1;
+fi
+
+if [[ $1 != *.lat ]]; then
+  printf "ERROR\n" >&2;
+  echo "Error: Wrong file extension. '*.lat' was expected.";
+  exit 1;
+fi
+
+if [ ! -f $1 ]; then
+  printf "ERROR\n" >&2;
+  echo "Error: Cannot find file $1.";
+  exit 1;
+fi
+
+name=$(basename $1 '.lat')
+targetdir=$(dirname $1)
+
+output=${targetdir}/${name}.s
+${latc} $1 ${output};
+gcc -m32 -g  ${output}  ${dir}/lib/runtime.o  -o ${targetdir}/${name};

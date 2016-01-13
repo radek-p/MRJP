@@ -39,7 +39,6 @@ type X86M a = StateT CompilationState (IO) a
 
 data Reg = EAX | EBX | ECX | EDX | ESI | EDI | EBP | EIP | ESP | DL deriving Eq
 
-newtype BlockIdx      = BlockIdx      { getBlockIdx      :: Int    }
 newtype PointerOffset = PointerOffset { getPointerOffset :: Int    } deriving Eq
 newtype Pointer       = Pointer       { getPointer       :: Int    } deriving Eq
 newtype Label         = Label         { getLabel         :: String } deriving Eq
@@ -62,6 +61,7 @@ data Statement
 
 data Directive
   = DString    String
+  | DGlobl     String
 
 data Instr
   = Instr0A

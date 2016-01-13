@@ -1,3 +1,5 @@
+*.S
+*.s
 # Created by .ignore support plugin (hsz.mobi)
 ### Haskell template
 dist

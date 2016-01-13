@@ -10,7 +10,7 @@ class GasmPrint a where
 instance GasmPrint Statement where
   printGasm (SInstr instr)   = (indent' $ printGasm instr) ++ "\n"
   printGasm (SLabel label)   = "\n" ++ printGasm label ++ ":\n"
-  printGasm (SDirective d)   = (indent' $ printGasm d) ++ "\n"
+  printGasm (SDirective d)   = printGasm d ++ "\n"
   printGasm (SComment _ [])  = "\n"
   printGasm (SComment i c)   = if i then (indent' $ prefixLines "# " c) ++ "\n" else "\n/* " ++ c ++ " */"
 
@@ -23,8 +23,8 @@ instance GasmPrint Instr where
     align (printGasm op) ++ "  " ++ align (printGasm l1) ++ ", " ++ (printGasm l2)
 
 instance GasmPrint Directive where
-  printGasm (DString s) =
-    ".string " ++ show s
+  printGasm (DString s) = indent' ".string " ++ show s
+  printGasm (DGlobl  s) = ".globl " ++ s
 
 instance GasmPrint Operation where
   printGasm op = case op of

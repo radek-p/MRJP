@@ -26,7 +26,8 @@ emitProgram :: Program -> X86M ()
 emitProgram = emitTree
 
 emitTree :: Tree a -> X86M ()
-emitTree x@(Program _) =
+emitTree x@(Program _) = do
+  preambleStmts %= (SDirective (DGlobl "main"):)
   composOpM_ emitTree x
 
 emitTree x@(FnDef _ ident _ block) = do
