@@ -301,6 +301,12 @@ emitBooleanExpr (EBinOp e1 op e2) lTrue lFalse lNext = do
 emitBooleanExpr (Not e1) lTrue lFalse lNext =
   emitBooleanExpr e1 lFalse lTrue lNext
 
+emitBooleanExpr (ELitTrue) lTrue _ lNext =
+  if lTrue  == lNext then return () else jmp (LLbl lTrue)
+
+emitBooleanExpr (ELitFalse) _ lFalse lNext =
+  if lFalse == lNext then return () else jmp (LLbl lFalse)
+
 emitBooleanExpr _ _ _ _ = error "Boolean expression was expected"
 
 
