@@ -35,24 +35,32 @@ newScope m = do
   currentScope .= outerScope
   return res
 
-declVar :: (Type, Ident) -> CheckM ()
-declVar (typ, ident) = do
+declVar :: Type -> Item -> CheckM Item
+declVar typ x@(NoInit ident) = do
   scope <- use currentScope
   when (ident `M.member` scope) $
     throwTypeError (IdentifierAlreadyDefined ident)
   let doInsertion = M.insert ident $ Variable typ ident
   vEnv         %= doInsertion
   currentScope %= doInsertion
+  return x
 
-declVars :: [(Type, Ident)] -> CheckM ()
-declVars lst =
-  mapM_ (declVar) lst
+declVar typ (Init ident e1) = do
+  scope <- use currentScope
+  when (ident `M.member` scope) $
+    throwTypeError (IdentifierAlreadyDefined ident)
+  (type', e1') <- checkExpr e1
+  type' <=! typ
+  let doInsertion = M.insert ident $ Variable typ ident
+  vEnv         %= doInsertion
+  currentScope %= doInsertion
+  return $ Init ident e1'
 
 checkStmtInner :: Tree a -> CheckM (Tree a)
 checkStmtInner x = case x of
   ClsDef{} -> objectsNotSupportedYet
   FnDef retType _ args _ -> newScope $ do
-    declVars [(typ, ident) | Arg typ ident <- args]
+    mapM_ id $ [ declVar typ (NoInit ident) | Arg typ ident <- args]
     returnType .= retType
     checkStmt x
   Ret e1 -> do
@@ -68,8 +76,8 @@ checkStmtInner x = case x of
     return VRet
   BStmt _  -> newScope $ checkStmt x
   Decl typ items -> do
-    declVars $ map (\item -> case item of { Init ident _ -> (typ, ident); NoInit ident -> (typ, ident) }) items
-    checkStmt x
+    items' <- mapM (declVar typ) items
+    return $ Decl typ items'
   Init ident e1 -> do
     var <- getVariable ident
     let type' = getType var
