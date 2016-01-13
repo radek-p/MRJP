@@ -29,7 +29,7 @@ void printString(char *string) {
 }
 
 void error() {
-    printf("runtime error");
+    printf("runtime error\n");
 
     exit(1);
 }
