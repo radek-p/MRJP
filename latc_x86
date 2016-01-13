@@ -29,10 +29,14 @@ fi
 
 name=$(basename $1 '.lat')
 targetdir=$(dirname $1)
+echo ${name};
 
 output=${targetdir}/${name}.s
 ${latc} $1 ${output} > /dev/null;
 if [[ $? == 0 ]]; then
   gcc -m32 -g  ${output}  ${dir}/lib/runtime.o  -o ${targetdir}/${name};
+  exit $?;
+else
+  exit 1;
 fi
-exit
+
