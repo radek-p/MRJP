@@ -45,11 +45,21 @@ int readInt() {
 
 char *readString() {
     char * result;
+    size_t size;
+    ssize_t read;
 
     result = NULL;
+    size   = 0;
 
-    if (getline(&result, NULL, stdin) == -1)
-        error();
+    do {
+        read = getline(&result, &size, stdin);
+        if (read == -1)
+            error();
+        
+    } while (read == 1);
+
+    if (read > 0)
+        result[read - 1] = '\0';
 
     return result;
 }
