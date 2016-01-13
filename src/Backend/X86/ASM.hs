@@ -32,8 +32,8 @@ emit2A op l1 l2 = emitI $ Instr2A op l1 l2
 esp, ebp, eax, ebx, ecx, edx, dl :: Loc
 [esp, ebp, eax, ebx, ecx, edx, dl] = map LReg [ESP, EBP, EAX, EBX, ECX, EDX, DL]
 
-ret :: WriteInstr0A
-[ret] = map emit0A [Ret_]
+ret, cdq :: WriteInstr0A
+[ret, cdq] = map emit0A [Ret_, Cdq]
 
 pushl, popl, jmp, je, jne, neg, call, idivl, jg, jge, jl, jle :: WriteInstr1A
 [pushl, popl, jmp, je, jne, neg, call, idivl, jg, jge, jl, jle] =

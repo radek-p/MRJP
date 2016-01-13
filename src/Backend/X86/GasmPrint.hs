@@ -36,6 +36,7 @@ instance GasmPrint Operation where
     PushL -> "pushl"
     PopL  -> "popl"
     Ret_  -> "ret"
+    Cdq   -> "cdq"
     Test  -> "test"
     Je    -> "je"
     Neg_  -> "neg"

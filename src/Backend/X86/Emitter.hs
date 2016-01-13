@@ -234,11 +234,11 @@ emitIntOp (EBinOp e1 op e2) = do
   popl eax
 
   case op of
-    Plus_Int ->                      addl  ecx eax  >> pushl eax
-    Minus    ->                      subl  ecx eax  >> pushl eax
-    Times    ->                      imull ecx eax  >> pushl eax
-    Div      -> movl (LImm 0) edx >> idivl ecx      >> pushl eax
-    Mod      -> movl (LImm 0) edx >> idivl ecx      >> pushl edx
+    Plus_Int ->        addl  ecx eax  >> pushl eax
+    Minus    ->        subl  ecx eax  >> pushl eax
+    Times    ->        imull ecx eax  >> pushl eax
+    Div      -> cdq >> idivl ecx      >> pushl eax
+    Mod      -> cdq >> idivl ecx      >> pushl edx
     _        -> error "Int op was expected"
 
 emitIntOp _ = error "EBinOp was expected"

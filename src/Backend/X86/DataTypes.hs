@@ -84,6 +84,7 @@ data Operation
   | PopL
   | Ret_
   | Test
+  | Cdq
   | Neg_
   | Call
   | CmpL
