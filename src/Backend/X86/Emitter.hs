@@ -271,17 +271,17 @@ emitBooleanExpr (EBinOp e1 op e2) lTrue lFalse lNext = do
     referenceEquality = do
       loadValues
       cmpl    eax ecx
-      genJump je  jne
+      genJump' je  jne
     referenceNEquality :: X86M ()
     referenceNEquality = do
       loadValues
       cmpl    eax ecx
-      genJump jne je
+      genJump' jne je
     comparison :: WriteInstr1A -> WriteInstr1A -> X86M ()
     comparison posJ negJ = do
       loadValues
       cmpl    ecx eax
-      genJump posJ negJ
+      genJump' posJ negJ
     lAnd = do
       lMiddle <- newIndexedLabel "and"
       emitBooleanExpr e1 lMiddle lFalse lMiddle
@@ -292,11 +292,8 @@ emitBooleanExpr (EBinOp e1 op e2) lTrue lFalse lNext = do
       emitBooleanExpr e1 lTrue   lMiddle lMiddle
       placeLabel lMiddle
       emitBooleanExpr e2 lTrue   lFalse  lNext
-    genJump :: WriteInstr1A -> WriteInstr1A -> X86M ()
-    genJump posJump negJump
-      | lNext == lTrue  = negJump (LLbl lFalse)
-      | lNext == lFalse = posJump (LLbl lTrue )
-      | otherwise       = posJump (LLbl lTrue ) >> jmp (LLbl lFalse)
+    genJump' :: WriteInstr1A -> WriteInstr1A -> X86M ()
+    genJump' = genJump lTrue lFalse lNext
 
 emitBooleanExpr (Not e1) lTrue lFalse lNext =
   emitBooleanExpr e1 lFalse lTrue lNext
@@ -307,6 +304,17 @@ emitBooleanExpr (ELitTrue) lTrue _ lNext =
 emitBooleanExpr (ELitFalse) _ lFalse lNext =
   if lFalse == lNext then return () else jmp (LLbl lFalse)
 
-emitBooleanExpr _ _ _ _ = error "Boolean expression was expected"
+-- Other boolean expression, evaluate it and get the result from stack
+emitBooleanExpr e1 lTrue lFalse lNext = do
+  emitExpr e1
+  popl eax
+  test eax eax
+  genJump lTrue lFalse lNext jne je
+
+genJump :: Label -> Label -> Label -> WriteInstr1A -> WriteInstr1A -> X86M ()
+genJump lTrue lFalse lNext posJump negJump
+  | lNext == lTrue  = negJump (LLbl lFalse)
+  | lNext == lFalse = posJump (LLbl lTrue )
+  | otherwise       = posJump (LLbl lTrue ) >> jmp (LLbl lFalse)
 
 
