@@ -39,15 +39,14 @@ declVar ident = do
   nextIdx %= (+1)
   idxEnv  %= (M.insert ident idx)
 
-item2ident :: Item -> Ident
-item2ident (Init ident _) = ident
-item2ident (NoInit ident) = ident
-
 processItem :: Item -> UnifyM Item
 processItem (Init ident e1) = do
   e1' <- unifyVariables' e1
+  declVar ident
   return (Init ident e1')
-processItem x = return x
+processItem x@(NoInit ident) = do
+  declVar ident
+  return x
 
 getUniqueIdent :: Ident -> UnifyM Ident
 getUniqueIdent ident@(Ident str) = do
@@ -68,7 +67,6 @@ unifyVariables' x = case x of
     composOpM unifyVariables' x
   Decl q items -> do
     items' <- mapM processItem items
-    mapM_ declVar (map item2ident items')
     composOpM unifyVariables' (Decl q items')
   NoInit ident   -> do
     ident' <- getUniqueIdent ident
