@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs, KindSignatures, Rank2Types, DataKinds, PolyKinds, FlexibleContexts #-}
 module Frontend.SemanticAnalysis.Runner where
 
-import Prelude hiding (cycle)
+import Prelude
 import Control.Monad.State
 import qualified Data.Map as M
 
@@ -40,7 +40,8 @@ checkProgram p0 = do
 
   -- second pass of checks
   p2 <- checkTC p1
---  p3 <- propagateConstants p2
+
+  -- p3 <- propagateConstants p2
   p3 <- simpleElimination p2
   checkRS p3
   liftIO $ putStrLn "[ 3/3 ] Semantic analysis."

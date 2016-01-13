@@ -3,10 +3,10 @@ module Main where
 
 import System.Environment ( getArgs )
 import System.Exit ( exitFailure, exitSuccess )
+import System.IO
 import Control.Monad.Except
 import Control.Monad.State
 
-import Utility.PrettyPrinting
 import Frontend.SemanticAnalysis.Runner
 import Frontend.Parser.ParLatte
 import Frontend.Parser.AbsLatte
@@ -16,64 +16,65 @@ import Backend.X86.Runner
 
 type Verbosity = Int
 
-putStrV :: Verbosity -> String -> IO ()
-putStrV v s = when (v > 1) $ putStrLn s
-
-runFile :: Verbosity -> FilePath -> IO ()
-runFile v f = putStrLn f >> readFile f >>= run v
-
-run :: Verbosity -> String -> IO ()
-run _ programText = do
-  program <- parseProgram programText
-  compileProgram program
-  exitSuccess
-
-parseProgram :: String -> IO Program
-parseProgram programText = do
-  let tokens = myLexer programText
-  let parsingResult = pProgram tokens
-  case parsingResult of
-    Bad s     -> putStrLn "\n[FAIL] Parsing. Error: " >> putStrLn s >> exitFailure
-    Ok result -> return result
-
-compileProgram :: Program -> IO ()
-compileProgram tree = do
-  putStrLn "[ 1/1 ] Parsing."
-
-  checkRes <- runExceptT (runStateT (checkProgram tree) undefined)
-  (tree', _) <- case checkRes of
-    Left  err   -> putStrLn (show err) >> exitFailure
-    Right x -> return x
-
-  asmCode <- genASM tree'
-  putStrLn asmCode
-  putStrLn "[ OK  ] Done."
-
-
-showTree :: Int -> Program -> IO ()
-showTree v tree = do
-  putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
-  putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
-
-usage :: IO ()
-usage = do
-  putStrLn $ unlines
-    [ "usage: Call with one of the following argument combinations:"
-    , "  --help          Display this help message."
-    , "  (no arguments)  Parse stdin verbosely."
-    , "  (files)         Parse content of files verbosely."
-    , "  -s (files)      Silent mode. Parse content of files silently."
-    ]
-  exitFailure
-
 main :: IO ()
 main = do
   args <- getArgs
   case args of
-    ["--help"] -> usage
-    [] -> getContents >>= run 2
-    "-s":fs -> mapM_ (runFile 0) fs
-    fs -> mapM_ (runFile 2) fs
+    [inputFile, outputFile] -> run inputFile outputFile
+    [             "--help"] -> notifyUsage
+    _                       -> notifyUsage
+
+run :: FilePath -> FilePath -> IO ()
+run inputFile outputFile = do
+  programText <- readFile       inputFile
+  programTree <- parseProgram   programText
+  asmCode     <- compileProgram programTree
+  writeFile outputFile asmCode
+  notifySuccess
+
+parseProgram :: String -> IO Program
+parseProgram programText = do
+  let tokens        = myLexer programText
+  let parsingResult = pProgram tokens
+  case parsingResult of
+    Bad s     -> do
+      putStrLn "[ FAIL] Parsing.\n Error: "
+      putStrLn s
+      notifyFail
+    Ok result -> do
+      putStrLn "[ 1/1 ] Parsing."
+      return result
+
+compileProgram :: Program -> IO String
+compileProgram tree = do
+  checkRes <- runExceptT (runStateT (checkProgram tree) undefined)
+  (tree', _) <- case checkRes of
+    Left  err -> putStrLn (show err) >> notifyFail
+    Right x   -> return x
+
+  asmCode <- genASM tree'
+  return asmCode
+
+notifySuccess :: IO a
+notifySuccess = do
+  hPutStrLn stderr "OK\n"
+  exitSuccess
+
+notifyFail :: IO a
+notifyFail = do
+  hPutStrLn stderr "ERROR\n"
+  exitFailure
+
+notifyUsage :: IO ()
+notifyUsage = do
+  hPutStrLn stderr "ERROR\n"
+  putStrLn $ unlines [
+      "Error: Exactly 3 arguments were expected:",
+      "  [-jvm/-llvm]  - architecture switch",
+      "  input file",
+      "  output file"
+    ]
+  exitFailure
 
 
 
