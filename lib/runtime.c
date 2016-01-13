@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "runtime.h"
 
-char *liblatteConcat(char *s1, char *s2) {
+char *liblatteConcat(const char *s1, const char *s2) {
 
     char *result;
     size_t new_length;
@@ -19,12 +19,12 @@ char *liblatteConcat(char *s1, char *s2) {
 }
 
 void printInt(int i) {
-    if (printf("%d", i) < 0)
+    if (printf("%d\n", i) < 0)
         error();
 }
 
 void printString(char *string) {
-    if (printf("%s", string) < 0)
+    if (printf("%s\n", string) < 0)
         error();
 }
 

@@ -176,7 +176,7 @@ emitExpr (EApp ident args) = do
   where
     argOffset = length args * varSize
     computeArg (n, e1) = do
-      let argloc = LRel ESP $ PointerOffset ((-n) * varSize)
+      let argloc = LRel ESP $ PointerOffset (n * varSize)
       emitExpr e1
       popl eax
       movl eax argloc

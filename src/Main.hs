@@ -57,17 +57,17 @@ compileProgram tree = do
 
 notifySuccess :: IO a
 notifySuccess = do
-  hPutStrLn stderr "OK\n"
+  hPutStr stderr "OK\n"
   exitSuccess
 
 notifyFail :: IO a
 notifyFail = do
-  hPutStrLn stderr "ERROR\n"
+  hPutStr stderr "ERROR\n"
   exitFailure
 
 notifyUsage :: IO ()
 notifyUsage = do
-  hPutStrLn stderr "ERROR\n"
+  hPutStr stderr "ERROR\n"
   putStrLn $ unlines [
       "Error: Exactly 3 arguments were expected:",
       "  [-jvm/-llvm]  - architecture switch",

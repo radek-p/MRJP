@@ -31,7 +31,7 @@ name=$(basename $1 '.lat')
 targetdir=$(dirname $1)
 
 output=${targetdir}/${name}.s
-${latc} $1 ${output} > /dev/null 2> /dev/null;
+${latc} $1 ${output} > /dev/null;
 if [[ $? == 0 ]]; then
   gcc -m32 -g  ${output}  ${dir}/lib/runtime.o  -o ${targetdir}/${name};
 fi

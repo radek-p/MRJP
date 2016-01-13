@@ -4,7 +4,7 @@
 #include <string.h>
 
 // Concatenate two arrays of char
-char *liblatteConcat(char *s1, char *s2);
+char *liblatteConcat(const char *s1, const char *s2);
 
 void printInt(int);
 
