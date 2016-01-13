@@ -29,17 +29,18 @@ emit1A op l1    = emitI $ Instr1A op l1
 emit2A :: Operation -> WriteInstr2A
 emit2A op l1 l2 = emitI $ Instr2A op l1 l2
 
-esp, ebp, eax, ebx, ecx, edx :: Loc
-[esp, ebp, eax, ebx, ecx, edx] = map LReg [ESP, EBP, EAX, EBX, ECX, EDX]
+esp, ebp, eax, ebx, ecx, edx, dl :: Loc
+[esp, ebp, eax, ebx, ecx, edx, dl] = map LReg [ESP, EBP, EAX, EBX, ECX, EDX, DL]
 
 ret :: WriteInstr0A
 [ret] = map emit0A [Ret_]
 
-pushl, popl, jmp, je, jne, neg, call :: WriteInstr1A
-[pushl, popl, jmp, je, jne, neg, call] = map emit1A [PushL, PopL, Jmp, Je, Jne, Neg_, Call]
+pushl, popl, jmp, je, jne, neg, call, idivl, sete, setg, setge, setl, setle :: WriteInstr1A
+[pushl, popl, jmp, je, jne, neg, call, idivl, sete, setg, setge, setl, setle] =
+  map emit1A [PushL, PopL, Jmp, Je, Jne, Neg_, Call, IDivL, SetE, SetG, SetGE, SetL, SetLE]
 
-movl, addl, subl, test :: WriteInstr2A
-[movl, addl, subl, test] = map emit2A [MovL, AddL, SubL, Test]
+movl, addl, subl, test, imull, cmpl, andl, orl :: WriteInstr2A
+[movl, addl, subl, test, imull, cmpl, andl, orl] = map emit2A [MovL, AddL, SubL, Test, IMulL, CmpL, AndL, OrL]
 
 _NULL :: Pointer
 _NULL = Pointer 0

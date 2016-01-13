@@ -72,13 +72,17 @@ instance HasType Class where
 type Env' a = M.Map Ident a
 type Env = (Env' Variable, Env' Function, Env' Class)
 
+concatIdent :: Ident
+concatIdent = Ident "liblatteConcat"
+
 builtInFunctions :: [Function]
 builtInFunctions = [
     BuiltInFn (FunT VoidT   [IntT]   ) (Ident "printInt"),
     BuiltInFn (FunT VoidT   [StringT]) (Ident "printString"),
     BuiltInFn (FunT IntT    []       ) (Ident "readInt"),
     BuiltInFn (FunT StringT []       ) (Ident "readString"),
-    BuiltInFn (FunT VoidT   []       ) (Ident "error")
+    BuiltInFn (FunT VoidT   []       ) (Ident "error"),
+    BuiltInFn (FunT StringT [StringT, StringT]) concatIdent
   ]
 
 defaultValue :: Type -> Expr

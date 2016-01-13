@@ -15,8 +15,8 @@ import Frontend.SemanticAnalysis.ContextUpdates.BuildEnv
 import Frontend.SemanticAnalysis.Checks.NoNestedDecls
 import Frontend.SemanticAnalysis.Transformations.UnifyOperators
 import Frontend.SemanticAnalysis.Checks.TypeCorrectness
-import Frontend.SemanticAnalysis.Transformations.ConstantPropagation hiding ( initialState )
---import Frontend.SemanticAnalysis.Transformations.SimpleElimination
+--import Frontend.SemanticAnalysis.Transformations.ConstantPropagation hiding ( initialState )
+import Frontend.SemanticAnalysis.Transformations.SimpleElimination
 import Frontend.SemanticAnalysis.Checks.ProperReturnStatements
 
 
@@ -40,8 +40,8 @@ checkProgram p0 = do
 
   -- second pass of checks
   p2 <- checkTC p1
-  p3 <- propagateConstants p2
-  -- p3 <- simpleElimination p2
+--  p3 <- propagateConstants p2
+  p3 <- simpleElimination p2
   checkRS p3
   liftIO $ putStrLn "[ 3/3 ] Semantic analysis."
 

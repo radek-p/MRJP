@@ -1,8 +1,9 @@
 {-# LANGUAGE GADTs #-}
 module Backend.X86.Emitter where
 
-import Control.Lens
+import Control.Lens hiding ( op )
 
+import Language.BuiltIns
 import Frontend.Parser.AbsLatte
 import Utility.PrettyPrinting
 import Backend.X86.DataTypes
@@ -51,14 +52,16 @@ emitTree x@(FnDef _ ident _ block) = do
   ret
 
 emitTree (Init ident e1) = do
-  res <- emitExpr e1
-  loc <- getLocOf (LVar ident)
-  movl res loc
+  loc  <- getLocOf (LVar ident)
+  emitExpr e1
+  popl eax
+  movl eax loc
 
 emitTree (Ass lval e1) = do
-  res <- emitExpr e1
   loc <- getLocOf lval
-  movl res loc
+  emitExpr e1
+  popl eax
+  movl eax loc
 
 emitTree (Incr lval) = do
   loc <- getLocOf lval
@@ -69,9 +72,11 @@ emitTree (Decr lval) = do
   subl (LImm 1) loc
 
 emitTree (Ret e1) = do
-  res <- emitExpr e1
-  movl res eax
+  comment "Prepare to retun a value"
+  emitExpr e1
+  popl eax
   getEndLabel >>= jmp.LLbl
+  comment "End return"
 
 emitTree (VRet) = do
   getEndLabel >>= jmp.LLbl
@@ -79,8 +84,9 @@ emitTree (VRet) = do
 emitTree (Cond e1 s1) = do
   lEnd    <- newIndexedLabel "if_end"
 
-  res <- emitExpr e1
-  test res res
+  emitExpr e1
+  popl eax
+  test eax eax
   je (LLbl lEnd)
 
   emitTree s1
@@ -91,8 +97,9 @@ emitTree (CondElse e1 s1 s2) = do
   lElse <- newIndexedLabel "if_else"
   lEnd  <- newIndexedLabel "if_end"
 
-  res <- emitExpr e1
-  test res res
+  emitExpr e1
+  popl eax
+  test eax eax
   je (LLbl lElse)
 
   emitTree s1
@@ -113,16 +120,19 @@ emitTree (While e1 s1) = do
   emitTree s1
 
   placeLabel lCond
-  res <- emitExpr e1
-  test res res
+  emitExpr e1
+  popl eax
+  test eax eax
   jne (LLbl lBody)
 
 emitTree (For{}) = error "Arrays not supported yet"
 
-emitTree (SExp e1) =
-  emitExpr e1 >> return ()
+emitTree (SExp e1) = do
+  emitExpr e1
+  popl eax
 
 emitTree x = composOpM_ emitTree x
+
 
 getLocOf :: LVal -> X86M Loc
 getLocOf (LVar ident) = do
@@ -131,22 +141,23 @@ getLocOf (LVar ident) = do
 
 getLocOf _ = error "Objects / arrays not supported yet"
 
-emitExpr :: Expr -> X86M Loc
+
+emitExpr :: Expr -> X86M ()
 emitExpr (ELitInt n) =
-  return $ LImm $ fromIntegral n
+  pushl $ LImm $ fromIntegral n
 
 emitExpr (ELitTrue) =
-  return $ LImm 1
+  pushl $ LImm 1
 
 emitExpr (ELitFalse) =
-  return $ LImm 0
+  pushl $ LImm 0
 
 emitExpr (ELitNull{}) =
-  return $ LAbs _NULL
+  pushl $ LAbs _NULL
 
 emitExpr (EString s) = do
   label <- declareString s
-  return $ LLbl label
+  pushl $ LStr label
 
 emitExpr (EApp ident args) = do
   let label = functionLabel ident
@@ -160,33 +171,125 @@ emitExpr (EApp ident args) = do
   addl (LImm argOffset) esp
   comment $ "<< " ++ printTree ident ++ "()"
 
-  return eax
+  pushl eax
   where
     argOffset = length args * varSize
     computeArg (n, e1) = do
       let argloc = LRel ESP $ PointerOffset ((-n) * varSize)
-      argloc0 <- emitExpr e1
-      movl argloc0 argloc
-      return argloc
+      emitExpr e1
+      popl eax
+      movl eax argloc
 
 emitExpr (ELVal lval) = do
   loc <- getLocOf lval
-  movl loc eax
-  return eax
+  movl  loc eax
+  pushl eax
 
 emitExpr (Neg e1) = do
-  loc <- emitExpr e1
-  case loc of
-    LImm n -> return $ LImm (-n)
-    _      -> do
-      neg loc
-      return loc
+  emitExpr e1
+  popl     eax
+  neg      eax
+  pushl    eax
 
 emitExpr (Not e1) = do
-  loc <- emitExpr e1
-  -- TODO !!
-  return loc
+  emitExpr e1
+  popl ecx
+  movl (LImm 1) eax
+  subl ecx eax
+  pushl eax
 
-emitExpr _ = do
-  comment "TODO Expr"
-  return eax
+emitExpr x@(EBinOp e1 op e2) = case op of
+  Plus_Str -> emitExpr $ EApp concatIdent [e1, e2]
+
+  Plus_Int -> emitIntOp x
+  Minus    -> emitIntOp x
+  Times    -> emitIntOp x
+  Div      -> emitIntOp x
+  Mod      -> emitIntOp x
+
+  EQU_Str  -> emitBooleanOp x
+  NE_Str   -> emitBooleanOp x
+  EQU_Int  -> emitBooleanOp x
+  NE_Int   -> emitBooleanOp x
+  EQU_Bool -> emitBooleanOp x
+  NE_Bool  -> emitBooleanOp x
+  LTH      -> emitBooleanOp x
+  LE       -> emitBooleanOp x
+  GTH      -> emitBooleanOp x
+  GE       -> emitBooleanOp x
+  EQU      -> emitBooleanOp x
+  NE       -> emitBooleanOp x
+  AND      -> emitBooleanOp x
+  OR       -> emitBooleanOp x
+
+  _        -> error $ "Unsupported operator " ++ show op
+
+emitExpr x = error $ "Unsupported expression " ++ show x
+
+emitIntOp :: Expr -> X86M ()
+emitIntOp (EBinOp e1 op e2) = do
+  emitExpr e1
+  emitExpr e2
+  popl ecx
+  popl eax
+
+  case op of
+    Plus_Int ->                      addl  ecx eax  >> pushl eax
+    Minus    ->                      subl  ecx eax  >> pushl eax
+    Times    ->                      imull ecx eax  >> pushl eax
+    Div      -> movl (LImm 0) edx >> idivl ecx      >> pushl eax
+    Mod      -> movl (LImm 0) edx >> idivl ecx      >> pushl edx
+    _        -> error "Int op was expected"
+
+emitIntOp _ = error "EBinOp was expected"
+
+emitBooleanOp :: Expr -> X86M ()
+emitBooleanOp (EBinOp e1 op e2) = do
+  emitExpr e1
+  emitExpr e2
+  popl  ecx
+  popl  eax
+  case op of
+    EQU_Str  -> referenceEquality
+    NE_Str   -> referenceNEquality
+    EQU_Int  -> referenceEquality
+    NE_Int   -> referenceNEquality
+    EQU_Bool -> referenceEquality
+    NE_Bool  -> referenceNEquality
+    LTH      -> comparison setl
+    LE       -> comparison setle
+    GTH      -> comparison setg
+    GE       -> comparison setge
+    AND      -> lAnd
+    OR       -> lOr
+    _        -> error "Boolean op was expected"
+  where
+    referenceEquality :: X86M ()
+    referenceEquality = do
+      movl  (LImm 0) edx
+      cmpl  eax ecx
+      sete  dl
+      pushl edx
+    referenceNEquality :: X86M ()
+    referenceNEquality = do
+      movl  (LImm 0) edx
+      cmpl  eax ecx
+      sete  dl
+      pushl edx
+    comparison :: (WriteInstr1A) -> X86M ()
+    comparison instr = do
+      movl  (LImm 0) edx
+      cmpl  ecx eax
+      instr dl
+      pushl edx
+    lAnd = do
+      andl ecx eax
+      pushl eax
+    lOr = do
+      orl ecx eax
+      pushl eax
+
+emitBooleanOp _ = error "EBinOp was expected"
+
+
+

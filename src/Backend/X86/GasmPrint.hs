@@ -40,6 +40,16 @@ instance GasmPrint Operation where
     Je    -> "je"
     Neg_  -> "neg"
     Call  -> "call"
+    IMulL -> "imull"
+    IDivL -> "idivl"
+    SetE  -> "sete"
+    CmpL  -> "cmpl"
+    SetG  -> "setg"
+    SetGE -> "setge"
+    SetL  -> "setl"
+    SetLE -> "setle"
+    AndL  -> "andl"
+    OrL   -> "orl"
 
 instance GasmPrint Reg where
   printGasm r = "%" ++ case r of
@@ -52,9 +62,10 @@ instance GasmPrint Reg where
     EBP -> "ebp"
     EIP -> "eip"
     ESP -> "esp"
+    DL  -> "dl"
 
 instance GasmPrint Pointer where
-  printGasm (Pointer n) = show n ++ "TODO!"
+  printGasm (Pointer n) = show n
 
 instance GasmPrint PointerOffset where
   printGasm (PointerOffset n) = show n
@@ -63,10 +74,11 @@ instance GasmPrint Loc where
   printGasm l = case l of
     LReg   r       -> printGasm r
     LFrRel off     -> printGasm off ++ "(%ebp)"
-    LAbs   ptr     -> printGasm ptr
+    LAbs   ptr     -> "$" ++ printGasm ptr
     LRel   ptr off -> (if (off == PointerOffset 0) then "" else printGasm off) ++ "(" ++ printGasm ptr ++ ")"
     LImm   n       -> "$" ++ show n
     LLbl   lbl     -> printGasm lbl
+    LStr   lbl     -> "$" ++ printGasm lbl
 
 instance GasmPrint Label where
   printGasm (Label l) = l

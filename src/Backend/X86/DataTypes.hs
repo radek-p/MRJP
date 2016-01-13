@@ -37,7 +37,7 @@ nextLabelIdx   = lens (\(CompilationState _ _ _ _ _ _ g) -> g) (\(CompilationSta
 
 type X86M a = StateT CompilationState (IO) a
 
-data Reg = EAX | EBX | ECX | EDX | ESI | EDI | EBP | EIP | ESP deriving Eq
+data Reg = EAX | EBX | ECX | EDX | ESI | EDI | EBP | EIP | ESP | DL deriving Eq
 
 newtype BlockIdx      = BlockIdx      { getBlockIdx      :: Int    }
 newtype PointerOffset = PointerOffset { getPointerOffset :: Int    } deriving Eq
@@ -51,6 +51,7 @@ data Loc
   | LRel   Reg PointerOffset     -- Absolute + offset (used for class field access)
   | LImm   Int                   -- Immediate value
   | LLbl   Label                 -- Address pointed by label
+  | LStr   Label
   deriving Eq
 
 data Statement
@@ -77,6 +78,8 @@ data Operation
   = MovL
   | AddL
   | SubL
+  | IMulL
+  | IDivL
   | Jne
   | Jmp
   | PushL
@@ -86,3 +89,12 @@ data Operation
   | Je
   | Neg_
   | Call
+  | SetE
+  | SetG
+  | SetGE
+  | SetL
+  | SetLE
+  | CmpL
+  | AndL
+  | OrL
+
