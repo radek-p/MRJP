@@ -83,37 +83,36 @@ emitTree (VRet) = do
   getEndLabel >>= jmp.LLbl
 
 emitTree (Cond e1 s1) = do
-  lEnd    <- newIndexedLabel "if_end"
+  lTrue <- newIndexedLabel "if_true"
+  lEnd  <- newIndexedLabel "if_end"
 
-  emitExpr e1
-  popl eax
-  test eax eax
-  je (LLbl lEnd)
+  emitBooleanExpr e1 lTrue lEnd lTrue
 
+  placeLabel lTrue
   emitTree s1
 
   placeLabel lEnd
 
 emitTree (CondElse e1 s1 s2) = do
-  lElse <- newIndexedLabel "if_else"
-  lEnd  <- newIndexedLabel "if_end"
+  lTrue  <- newIndexedLabel "if_true"
+  lFalse <- newIndexedLabel "if_false"
+  lEnd   <- newIndexedLabel "if_end"
 
-  emitExpr e1
-  popl eax
-  test eax eax
-  je (LLbl lElse)
+  emitBooleanExpr e1 lTrue lFalse lTrue
 
-  emitTree s1
-  jmp (LLbl lEnd)
+  placeLabel lTrue
+  emitTree   s1
+  jmp        (LLbl lEnd)
 
-  placeLabel lElse
+  placeLabel lFalse
+  emitTree   s2
 
-  emitTree s2
   placeLabel lEnd
 
 emitTree (While e1 s1) = do
   lCond <- newIndexedLabel "while_cond"
   lBody <- newIndexedLabel "while_body"
+  lEnd  <- newIndexedLabel "while_end"
 
   jmp (LLbl lCond)
 
@@ -121,10 +120,9 @@ emitTree (While e1 s1) = do
   emitTree s1
 
   placeLabel lCond
-  emitExpr e1
-  popl eax
-  test eax eax
-  jne (LLbl lBody)
+  emitBooleanExpr e1 lBody lEnd lEnd
+
+  placeLabel lEnd
 
 emitTree (For{}) = error "Arrays not supported yet"
 
@@ -193,11 +191,7 @@ emitExpr (Neg e1) = do
   pushl    eax
 
 emitExpr (Not e1) = do
-  emitExpr e1
-  popl ecx
-  movl (LImm 1) eax
-  subl ecx eax
-  pushl eax
+  storeBoolean 0 1 e1
 
 emitExpr x@(EBinOp e1 op e2) = case op of
   Plus_Str -> emitExpr $ EApp concatIdent [e1, e2]
@@ -208,24 +202,29 @@ emitExpr x@(EBinOp e1 op e2) = case op of
   Div      -> emitIntOp x
   Mod      -> emitIntOp x
 
-  EQU_Str  -> emitBooleanOp x
-  NE_Str   -> emitBooleanOp x
-  EQU_Int  -> emitBooleanOp x
-  NE_Int   -> emitBooleanOp x
-  EQU_Bool -> emitBooleanOp x
-  NE_Bool  -> emitBooleanOp x
-  LTH      -> emitBooleanOp x
-  LE       -> emitBooleanOp x
-  GTH      -> emitBooleanOp x
-  GE       -> emitBooleanOp x
-  EQU      -> emitBooleanOp x
-  NE       -> emitBooleanOp x
-  AND      -> emitBooleanOp x
-  OR       -> emitBooleanOp x
+  _ | (any (op==)
+      [EQU_Str, NE_Str, EQU_Int, NE_Int,
+      EQU_Bool, NE_Bool, LTH, LE, GTH, GE, AND, OR])
+        -> storeBoolean 1 0 x
 
   _        -> error $ "Unsupported operator " ++ show op
 
 emitExpr x = error $ "Unsupported expression " ++ show x
+
+storeBoolean :: Int -> Int -> Expr -> X86M ()
+storeBoolean vTrue vFalse e1 = do
+  lTrue  <- newIndexedLabel "store_true"
+  lFalse <- newIndexedLabel "store_false"
+  lAfter <- newIndexedLabel "store_after"
+
+  emitBooleanExpr e1 lTrue lFalse lTrue
+
+  placeLabel lTrue
+  pushl      (LImm vTrue)
+  jmp        (LLbl lAfter)
+  placeLabel lFalse
+  pushl      (LImm vFalse)
+  placeLabel lAfter
 
 emitIntOp :: Expr -> X86M ()
 emitIntOp (EBinOp e1 op e2) = do
@@ -244,12 +243,9 @@ emitIntOp (EBinOp e1 op e2) = do
 
 emitIntOp _ = error "EBinOp was expected"
 
-emitBooleanOp :: Expr -> X86M ()
-emitBooleanOp (EBinOp e1 op e2) = do
-  emitExpr e1
-  emitExpr e2
-  popl  ecx
-  popl  eax
+-- Adapted from slides for the lecture
+emitBooleanExpr :: Expr -> Label -> Label -> Label -> X86M ()
+emitBooleanExpr (EBinOp e1 op e2) lTrue lFalse lNext = do
   case op of
     EQU_Str  -> referenceEquality
     NE_Str   -> referenceNEquality
@@ -257,40 +253,54 @@ emitBooleanOp (EBinOp e1 op e2) = do
     NE_Int   -> referenceNEquality
     EQU_Bool -> referenceEquality
     NE_Bool  -> referenceNEquality
-    LTH      -> comparison setl
-    LE       -> comparison setle
-    GTH      -> comparison setg
-    GE       -> comparison setge
+    LTH      -> comparison jl    jge
+    LE       -> comparison jle   jg
+    GTH      -> comparison jg    jle
+    GE       -> comparison jge   jl
     AND      -> lAnd
     OR       -> lOr
     _        -> error "Boolean op was expected"
   where
+    loadValues :: X86M ()
+    loadValues = do
+      emitExpr e1
+      emitExpr e2
+      popl  ecx
+      popl  eax
     referenceEquality :: X86M ()
     referenceEquality = do
-      movl  (LImm 0) edx
-      cmpl  eax ecx
-      sete  dl
-      pushl edx
+      loadValues
+      cmpl    eax ecx
+      genJump je  jne
     referenceNEquality :: X86M ()
     referenceNEquality = do
-      movl  (LImm 0) edx
-      cmpl  eax ecx
-      sete  dl
-      pushl edx
-    comparison :: (WriteInstr1A) -> X86M ()
-    comparison instr = do
-      movl  (LImm 0) edx
-      cmpl  ecx eax
-      instr dl
-      pushl edx
+      loadValues
+      cmpl    eax ecx
+      genJump jne je
+    comparison :: WriteInstr1A -> WriteInstr1A -> X86M ()
+    comparison posJ negJ = do
+      loadValues
+      cmpl    ecx eax
+      genJump posJ negJ
     lAnd = do
-      andl ecx eax
-      pushl eax
+      lMiddle <- newIndexedLabel "and"
+      emitBooleanExpr e1 lMiddle lFalse lMiddle
+      placeLabel lMiddle
+      emitBooleanExpr e2 lTrue   lFalse lNext
     lOr = do
-      orl ecx eax
-      pushl eax
+      lMiddle <- newIndexedLabel "or"
+      emitBooleanExpr e1 lTrue   lMiddle lMiddle
+      placeLabel lMiddle
+      emitBooleanExpr e2 lTrue   lFalse  lNext
+    genJump :: WriteInstr1A -> WriteInstr1A -> X86M ()
+    genJump posJump negJump
+      | lNext == lTrue  = negJump (LLbl lFalse)
+      | lNext == lFalse = posJump (LLbl lTrue )
+      | otherwise       = posJump (LLbl lTrue ) >> jmp (LLbl lFalse)
 
-emitBooleanOp _ = error "EBinOp was expected"
+emitBooleanExpr (Not e1) lTrue lFalse lNext =
+  emitBooleanExpr e1 lFalse lTrue lNext
 
+emitBooleanExpr _ _ _ _ = error "Boolean expression was expected"
 
 

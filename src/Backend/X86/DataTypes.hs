@@ -80,21 +80,13 @@ data Operation
   | SubL
   | IMulL
   | IDivL
-  | Jne
-  | Jmp
   | PushL
   | PopL
   | Ret_
   | Test
-  | Je
   | Neg_
   | Call
-  | SetE
-  | SetG
-  | SetGE
-  | SetL
-  | SetLE
   | CmpL
   | AndL
   | OrL
-
+  | Jne | Jmp | Je  | JG  | JGE | JL  | JLE
