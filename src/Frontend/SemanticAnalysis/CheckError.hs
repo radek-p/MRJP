@@ -76,7 +76,7 @@ instance Show CEType where
 
 showFnDef :: FnDef -> String
 showFnDef (FnDef typ ident args _) =
-  printTree typ ++ " " ++ printTree ident ++ "(" ++ foldr ((++).printTree) "" args ++ ")"
+  printTree typ ++ " " ++ printTree ident ++ "(" ++ intercalate ", " (map printTree args) ++ ")"
 
 showClsDef :: Ident -> Ident -> String
 showClsDef ident super = unlines [

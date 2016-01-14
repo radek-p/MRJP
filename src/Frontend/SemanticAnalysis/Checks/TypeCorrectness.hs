@@ -74,6 +74,7 @@ checkStmtInner x = case x of
     observeStep x
     (type', e1') <- checkExpr e1
     retType <- use returnType
+    forbidVoid type'
     type' <=! retType
     return $ Ret e1'
   VRet -> do
