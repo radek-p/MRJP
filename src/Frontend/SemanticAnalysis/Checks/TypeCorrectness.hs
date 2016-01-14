@@ -35,8 +35,12 @@ newScope m = do
   currentScope .= outerScope
   return res
 
+forbidVoid :: Type -> CheckM ()
+forbidVoid t = when (t == VoidT) $ throwTypeError VoidNotAllowed
+
 declVar :: Type -> Item -> CheckM Item
 declVar typ x@(NoInit ident) = do
+  forbidVoid typ
   scope <- use currentScope
   when (ident `M.member` scope) $
     throwTypeError (IdentifierAlreadyDefined ident)
@@ -46,6 +50,7 @@ declVar typ x@(NoInit ident) = do
   return x
 
 declVar typ (Init ident e1) = do
+  forbidVoid typ
   scope <- use currentScope
   when (ident `M.member` scope) $
     throwTypeError (IdentifierAlreadyDefined ident)
@@ -59,7 +64,9 @@ declVar typ (Init ident e1) = do
 checkStmtInner :: Tree a -> CheckM (Tree a)
 checkStmtInner x = case x of
   ClsDef{} -> objectsNotSupportedYet
-  FnDef retType _ args _ -> newScope $ do
+  FnDef retType fname args _ -> newScope $ do
+    when (fname == Ident "main" && (not.null) args) $
+      throwTypeError (InvalidMainSignature args)
     mapM_ id $ [ declVar typ (NoInit ident) | Arg typ ident <- args]
     returnType .= retType
     checkStmt x

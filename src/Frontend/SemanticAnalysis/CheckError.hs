@@ -44,6 +44,8 @@ data TypeError
   | InvalidOperandTypes Type Type
   | InvalidNumberOfArguments [Type] [Type]
   | IdentifierAlreadyDefined Ident
+  | InvalidMainSignature [Arg]
+  | VoidNotAllowed
   deriving Show
 
 data CEContext
