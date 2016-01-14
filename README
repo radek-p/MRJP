@@ -1,0 +1,84 @@
+Komlilator języka Latte - wersja podstawowa
+
+     autor: Radosław Piórkowski
+nr indeksu: 335451
+
+
+-------------------------------------
+Spis treści:
+
+A. Kompilacja i uruchamianie programu
+B. Struktora projektu
+-------------------------------------
+
+W obecnym etapie kompilator obsługuje jedynie podstawową wersję języka,
+w najbliższym czasie zostanie dodana obsługa obiektów i tablic.
+
+A. Kompilacja i uruchamianie programu:
+
+    Do poprawnej kompilacji wymagane są:
+
+        -   GHC w wersji 7.10.2 
+            (na students dostępny w katalogu /home/students/inf/PUBLIC/MRJP/ghc-7.10.2/)
+
+        -   program 'cabal' w wersji 1.22.7.0
+            (niedostępny publicznie na students, ale można go łatwo zainstalować)
+
+        -   standardowe biblioteki Haskella (instalowane przez 'cabal install')
+            base, mtl, array, containers, lens, transformers
+
+    Procedura lokalnej instalacji powyższych programów na students przebiegła następująco:
+    
+        1.  Dodanie katalogu z nowym GHC do $PATH:
+            /home/students/inf/PUBLIC/MRJP/ghc-7.10.2/bin/ghc
+
+        2.  Usunięcie starych wersji instalowanych bibliotek:
+            rm -r ~/.ghc ~/.cabal
+
+        3.  Pobranie i rozpakowanie żródeł programu cabal-install
+            https://www.haskell.org/cabal/release/cabal-install-1.22.7.0/cabal-install-1.22.7.0.tar.gz
+
+        4.  Instalacja programu 'cabal-install' poprzez uruchomienie skryptu
+            bootstrap.sh znajdującego się w pobranym archiwum.
+
+        5.  Dodanie do $PATH katalogu:
+            ~/.cabal/bin
+
+    Instalacja kompilatora
+
+        6.  Pobranie wymaganych bibliotek:
+            cabal install
+
+        7.  Zbudowanie projektu:
+            cabal build
+
+    Kompilacja odbywa się w prosty sposób przy pomocy programu cabal, zatem zdecydowałem
+    o niedołączaniu do projektu pliku Makefile.
+
+B. Struktura projektu
+    
+    LatteC/
+        bin/            katalog z pomocniczymi skryptami, nieistotny    
+        lib/            zawiera pliki runtime.{o,c,h} z funkcjami wbudowanymi w język,
+                            oprócz funkcji wymienionych w treści zadania zawiera dodatkowo
+                            funkcję konkatenującą dwa napisy (liblatteConcat)
+        scripts/        zawiera skrypt uruchamiający program BNFC, jednak jego używanie
+                            *nie jest konieczne*, pliki wygenerowane przez BNFC zostały włączone
+                            do repozytorium
+        src/        
+            Backend/    
+                X86/    część projektu odpowiedzialna za generację kodu
+
+            Frontend/   część projektu odpowiedzialna za sprawdzenie poprawności programu wejściowego
+
+            Language/   zawiera definicje elementów wbudowanych w język (podstawowe typy, funkcje)
+
+            Utility/    funkcje pomocnicze
+
+            Main.hs     główny plik projektu, przeprowadza kolejne etapy kompilacji
+
+        tests/          katalog z testami, nieistotny
+
+        LatteC.cabal    definicja paczki Cabal, zawiera spis zależności
+
+        latc_x86        skrypt opakowujący wywołania kompilatora LatteC
