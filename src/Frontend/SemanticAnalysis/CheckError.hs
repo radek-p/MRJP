@@ -21,6 +21,7 @@ data CEType
   | TypeError TypeError
   | FeatureNotSupported String
   | MissingReturnStatement Ident
+  | IntegerOutOfBounds     Integer
 
 data TypeError
   = ClassNotFound    Ident
@@ -66,6 +67,7 @@ instance Show CEType where
     TypeError e                -> "Type error: " ++ show e
     FeatureNotSupported s      -> "Feature is not supported yet: " ++ s
     MissingReturnStatement _   -> "Missing return statement."
+    IntegerOutOfBounds n       -> "Integer literal  " ++ show n ++ "  is out of bounds."
 
 showFnDef :: FnDef -> String
 showFnDef (FnDef typ ident args _) =

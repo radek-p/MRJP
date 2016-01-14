@@ -21,7 +21,7 @@ for file in "${good[@]}"; do
     file_base=$(basename ${file} ".lat")
     file_path=$(dirname ${file})
 
-    "$bin" < "$file" > /dev/null #> "$file_out_tst"
+    ${bin} ${file} ${file_path}${file_base}.s > /dev/null
 
     e_code=$?
     if [ $e_code != 0 ]; then
@@ -29,7 +29,7 @@ for file in "${good[@]}"; do
             printf "${file_base} \n"
     else
             printf "[ ${green}OK${normal} ] "; (( numOk++ ))
-            printf "${file_base} \r"
+            printf "${file_base}"
     fi
 done
 
@@ -39,14 +39,15 @@ for file in "${bad[@]}"; do
     file_base=$(basename ${file} ".lat")
     file_path=$(dirname ${file})
 
-    "$bin" < "$file" > /dev/null
+    ${bin} ${file} ${file_path}${file_base}.s > /dev/null
+
     e_code=$?
     if [ $e_code == 0 ]; then
             printf "[${red}FAIL${normal}] "; (( numBad++ ))
             printf "${file_base} \n"
     else
             printf "[ ${green}OK${normal} ] "; (( numOk++ ))
-            printf "${file_base} \r"
+            printf "${file_base}"
     fi
 done
 

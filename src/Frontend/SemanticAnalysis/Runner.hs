@@ -10,6 +10,7 @@ import Frontend.Parser.AbsLatte
 import Frontend.SemanticAnalysis.Monad
 
 import Frontend.SemanticAnalysis.Checks.CyclicInherritance
+import Frontend.SemanticAnalysis.Checks.IntegersInBounds
 import Frontend.SemanticAnalysis.Checks.UniqueIdents
 import Frontend.SemanticAnalysis.ContextUpdates.BuildEnv
 import Frontend.SemanticAnalysis.Checks.NoNestedDecls
@@ -28,7 +29,7 @@ checkProgram p0 = do
   put initialState
 
   -- first pass of checks
-  mapM_ (\c -> c p0) [ checkCI, checkIdentsUnique, checkNND ]
+  mapM_ (\c -> c p0) [ checkCI, checkIdentsUnique, checkNND, checkIIB ]
   liftIO $ putStrLn "[ 1/3 ] Semantic analysis."
 
   -- transformation of AST
