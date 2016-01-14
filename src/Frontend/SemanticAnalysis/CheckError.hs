@@ -22,6 +22,7 @@ data CEType
   | FeatureNotSupported String
   | MissingReturnStatement Ident
   | IntegerOutOfBounds     Integer
+  | RedefinitionOfBuiltInFunctions [Ident]
 
 data TypeError
   = ClassNotFound    Ident
@@ -68,6 +69,8 @@ instance Show CEType where
     FeatureNotSupported s      -> "Feature is not supported yet: " ++ s
     MissingReturnStatement _   -> "Missing return statement."
     IntegerOutOfBounds n       -> "Integer literal  " ++ show n ++ "  is out of bounds."
+    RedefinitionOfBuiltInFunctions lst
+                               -> "Redefinition of built in function(s): " ++ concat [ printTree i ++ ", " | i <- lst ]
 
 showFnDef :: FnDef -> String
 showFnDef (FnDef typ ident args _) =
@@ -114,5 +117,5 @@ instance Show CheckError where
   show (CheckError typ ctx) = unlines [
       printRed $ "Error: " ++ show typ,
       "Context:",
-      unlines [ "   " ++ line | line <- lines $ printContexts ctx, line /= "" ]
+      unlines' [ "   " ++ line | line <- lines $ printContexts ctx, line /= "" ]
     ]

@@ -49,7 +49,7 @@ compileProgram :: Program -> IO String
 compileProgram tree = do
   checkRes <- runExceptT (runStateT (checkProgram tree) undefined)
   (tree', _) <- case checkRes of
-    Left  err -> putStrLn (show err) >> notifyFail
+    Left  err -> putStr (show err) >> notifyFail
     Right x   -> return x
 
   asmCode <- genASM tree'

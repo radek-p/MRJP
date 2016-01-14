@@ -2,23 +2,33 @@
 module Frontend.SemanticAnalysis.Checks.UniqueIdents (checkIdentsUnique) where
 
 import Prelude hiding (cycle)
-import qualified Data.Set   as S
+import Control.Monad
+import Control.Monad.State
+import Control.Lens
+import qualified Data.Set as S
+import qualified Data.Map as M
 
+import Language.BuiltIns
 import Frontend.Parser.AbsLatte
 import Frontend.SemanticAnalysis.Monad
 import Frontend.SemanticAnalysis.CheckError
 
 
 checkIdentsUnique :: Program -> CheckM ()
-checkIdentsUnique = checkFunctionNames >> checkClassNames
+checkIdentsUnique p = checkFunctionNames p >> checkClassNames p
 
 checkFunctionNames :: Program -> CheckM ()
 checkFunctionNames (Program topdefs)
-  | length idents /= S.size idents' = throwCheckError FunctionNamesNotUnique
-  | not $ S.member "main" idents'   = throwCheckError MainFunctionNotDefined
-  | otherwise                       = return ()
+  | length idents /= S.size idents'       = throwCheckError FunctionNamesNotUnique
+  | not $ S.member (Ident "main") idents' = throwCheckError MainFunctionNotDefined
+  | otherwise                             = do
+      fenv <- use fEnv
+      let builtIns = map getIdent $ M.elems fenv
+      unless (S.null (S.fromList builtIns `S.intersection` idents')) $
+        throwCheckError (RedefinitionOfBuiltInFunctions builtIns)
+      liftIO $ print idents'
     where
-      idents  = [ ident | FnTopDef (FnDef _ (Ident ident) _ _) <- topdefs ]
+      idents  = [ ident | FnTopDef (FnDef _ ident _ _) <- topdefs ]
       idents' = S.fromList idents
 
 checkClassNames :: Program -> CheckM ()
