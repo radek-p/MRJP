@@ -22,7 +22,7 @@ simplifyStackOperations' l = case l of
       (simplifyStackOperations' tl)
     else
       (SInstr (Instr2A AddL (LImm (n1 + n2)) l1)) : (simplifyStackOperations' tl)
-  (SInstr (Instr2A MovL l1 l2)):(SInstr (Instr2A MovL l2' l3)):tl | l2 == l2' && isImmediate l1 ->
+  (SInstr (Instr2A MovL l1 l2)):(SInstr (Instr2A MovL l2' l3)):tl | l2 == l2' && isImmediate l1 && isImmediate l2 ->
     if l1 == l2 then
       (simplifyStackOperations' tl)
     else

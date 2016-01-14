@@ -33,7 +33,7 @@ genASM p1 = do
   -- Compilation
   st <- execStateT (emitProgram p3) initialState
 
-  let stmts    = removeComments $ reverse $ st ^. emittedStmts
+  let stmts    = reverse $ st ^. emittedStmts
   let preamble = reverse $ st ^. preambleStmts
 
   let stmts'   = simplifyStackOperations stmts
