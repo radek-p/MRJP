@@ -11,6 +11,7 @@ import Backend.X86.Emitter
 import Backend.X86.GasmPrint
 import Backend.X86.Transformations.UnifyVariables
 import Backend.X86.Transformations.InitialisationOfVariables
+import Backend.X86.ASMTransformations.SimplifyStackOperations
 
 
 ----------------------------------------------------------------------------
@@ -32,9 +33,11 @@ genASM p1 = do
   -- Compilation
   st <- execStateT (emitProgram p3) initialState
 
-  let stmts    = map printGasm $ reverse $ st ^. emittedStmts
-  let preamble = map printGasm $ reverse $ st ^. preambleStmts
+  let stmts    = removeComments $ reverse $ st ^. emittedStmts
+  let preamble = reverse $ st ^. preambleStmts
+
+  let stmts'   = simplifyStackOperations stmts
 
   liftIO $ putStrLn "[ 2/2 ] Compilation."
 
-  return $ concat preamble ++ concat stmts
+  return $ concat (map printGasm preamble) ++ concat (map printGasm stmts')

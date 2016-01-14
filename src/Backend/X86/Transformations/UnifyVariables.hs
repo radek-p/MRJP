@@ -50,9 +50,7 @@ processItem x@(NoInit ident) = do
 
 getUniqueIdent :: Ident -> UnifyM Ident
 getUniqueIdent ident@(Ident str) = do
-  liftIO $ putStrLn $ "Before"
   idx <- uses idxEnv (M.!ident)
-  liftIO $ putStrLn $ "After"
   return (Ident $ str ++ "_#" ++ show idx)
 
 unifyVariables' :: Tree a -> UnifyM (Tree a)

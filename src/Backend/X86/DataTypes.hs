@@ -53,6 +53,13 @@ data Loc
   | LStr   Label
   deriving Eq
 
+isImmediate :: Loc -> Bool
+isImmediate LReg{} = True
+isImmediate LImm{} = True
+isImmediate LLbl{} = True
+isImmediate LStr{} = True
+isImmediate _      = False
+
 data Statement
   = SInstr     Instr
   | SLabel     Label
