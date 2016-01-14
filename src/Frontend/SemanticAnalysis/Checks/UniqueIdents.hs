@@ -26,7 +26,6 @@ checkFunctionNames (Program topdefs)
       let builtIns = map getIdent $ M.elems fenv
       unless (S.null (S.fromList builtIns `S.intersection` idents')) $
         throwCheckError (RedefinitionOfBuiltInFunctions builtIns)
-      liftIO $ print idents'
     where
       idents  = [ ident | FnTopDef (FnDef _ ident _ _) <- topdefs ]
       idents' = S.fromList idents
