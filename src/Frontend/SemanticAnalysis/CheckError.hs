@@ -92,7 +92,7 @@ instance Show TypeError where
     TEArrIdx     t             -> "Array index should have type int, but has: " ++ printTree t
     TEArrAlocLen t             -> "Allocated array length should have type int, but has: " ++ printTree t
     TEArr        t             -> "Wrong array type " ++ printTree t
-    IncompatibleTypes t1 t2    -> "Incompatible types: got  " ++ printBoldWhite (printTree t1) ++ printRed "  but  " ++ printBoldWhite (printTree t2) ++ printRed "  was expected."
+    IncompatibleTypes t1 t2    -> "Incompatible types:  " ++ printBoldWhite (printTree t1) ++ printRed "  is not subtype of  " ++ printBoldWhite (printTree t2) ++ printRed "  ."
     ObjAllocBadType  t         -> "Expected class type, but got: " ++ printTree t
     InvalidOperandTypes t1 t2  -> "Incompatible operand types: " ++ printTree t1 ++ " and " ++ printTree t2
     InvalidNumberOfArguments tl1 tl2 -> "Invalid number of function arguments: got  "
@@ -115,7 +115,7 @@ showClsDef ident super = unlines [
 instance Show CEContext where
   show (CEContext x) = case x of
     FnTopDef (FnDef _ ident _ _) -> unlines [
-        printWhite "In definition of function  " ++ printBoldWhite (printTree ident) ++ printWhite "  with signature:",
+        printWhite "In definition of function  " ++ printBoldWhite (printTree ident) ++ printWhite "  :",
         shortTree
       ]
     ClsDef   ident _       -> showClsDef ident objectClassIdent
