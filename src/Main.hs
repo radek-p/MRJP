@@ -7,6 +7,7 @@ import System.IO
 import Control.Monad.Except
 import Control.Monad.State
 
+import Utility.PrettyPrinting
 import Frontend.SemanticAnalysis.Runner
 import Frontend.Parser.ParLatte
 import Frontend.Parser.AbsLatte
@@ -34,12 +35,13 @@ run inputFile outputFile = do
 
 parseProgram :: String -> IO Program
 parseProgram programText = do
+  putStrLn "[ 0/1 ] Parsing."
   let tokens        = myLexer programText
   let parsingResult = pProgram tokens
   case parsingResult of
     Bad s     -> do
-      putStrLn "[ FAIL] Parsing.\n Error: "
-      putStrLn s
+      putStr   $ printRed "Error: "
+      putStrLn $ printRed s
       notifyFail
     Ok result -> do
       putStrLn "[ 1/1 ] Parsing."

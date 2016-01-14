@@ -3,7 +3,6 @@ module Frontend.SemanticAnalysis.Checks.UniqueIdents (checkIdentsUnique) where
 
 import Prelude hiding (cycle)
 import Control.Monad
-import Control.Monad.State
 import Control.Lens
 import qualified Data.Set as S
 import qualified Data.Map as M

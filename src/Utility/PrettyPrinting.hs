@@ -39,6 +39,9 @@ printWhite = printColor "\x1b[37m"
 printBoldWhite :: String -> String
 printBoldWhite = printColor "\x1b[37;1m"
 
+printBlue :: String -> String
+printBlue = printColor "\x1b[34m"
+
 class Printable a where
   printTree :: a -> String
 

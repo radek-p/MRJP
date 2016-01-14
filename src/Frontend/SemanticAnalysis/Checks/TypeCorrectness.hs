@@ -194,7 +194,7 @@ checkExprInner (EBinOp e1 op e2) = do
     OR    -> tBB_B
     EQU   -> do
       when (t1 /= t2) $
-        throwTypeError (IncompatibleTypes t1 t2)
+        throwTypeError (IncompatibleTypes t2 t1)
       case t1 of
         IntT     -> return (BooleanT, EBinOp e1' EQU_Int  e2')
         BooleanT -> return (BooleanT, EBinOp e1' EQU_Bool e2')
@@ -204,7 +204,7 @@ checkExprInner (EBinOp e1 op e2) = do
         _        -> throwTypeError $ InvalidOperandTypes t1 t2
     NE   -> do
       when (t1 /= t2) $
-        throwTypeError (IncompatibleTypes t1 t2)
+        throwTypeError (IncompatibleTypes t2 t1)
       case t1 of
         IntT     -> return (BooleanT, EBinOp e1' NE_Int  e2')
         BooleanT -> return (BooleanT, EBinOp e1' NE_Bool e2')
@@ -214,7 +214,7 @@ checkExprInner (EBinOp e1 op e2) = do
         _        -> throwTypeError $ InvalidOperandTypes t1 t2
     Plus  -> do
        when (t1 /= t2) $
-         throwTypeError (IncompatibleTypes t1 t2)
+         throwTypeError (IncompatibleTypes t2 t1)
        case t1 of
          IntT     -> return (IntT, EBinOp e1' Plus_Int e2')
          StringT  -> return (StringT, EBinOp e1' Plus_Str e2')
