@@ -5,7 +5,7 @@ import Control.Monad.State
 import Control.Lens
 
 import Frontend.Parser.AbsLatte
-import Utility.PrettyPrinting
+--import Utility.PrettyPrinting
 import Backend.X86.DataTypes
 import Backend.X86.Emitter
 import Backend.X86.GasmPrint
@@ -27,8 +27,8 @@ genASM p1 = do
   p3    <- unifyVariables p2
 
   liftIO $ putStrLn "[ 1/2 ] Compilation."
-  liftIO $ putStrLn $ indent 8 $ printWhite $ "Transformend program tree:"
-  liftIO $ putStrLn $ indent 8 $ printGreen $ printTree p3
+  --  liftIO $ putStrLn $ indent 8 $ printWhite $ "Transformend program tree:"
+  --  liftIO $ putStrLn $ indent 8 $ printGreen $ printTree p3
 
   -- Compilation
   st <- execStateT (emitProgram p3) initialState

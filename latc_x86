@@ -29,11 +29,12 @@ fi
 
 name=$(basename $1 '.lat')
 targetdir=$(dirname $1)
-echo ${name};
+echo "Compiling '${name}.lat' with ${latc}:";
 
 output=${targetdir}/${name}.s
-${latc} $1 ${output} > /dev/null;
+${latc} $1 ${output};
 if [[ $? == 0 ]]; then
+  echo "Compiling '${name}.s' with gcc:";
   gcc -m32 -g  ${output}  ${dir}/lib/runtime.o  -o ${targetdir}/${name};
   exit $?;
 else
