@@ -53,24 +53,28 @@ emitTree x@(FnDef _ ident _ block) = do
   ret
 
 emitTree (Init ident e1) = do
-  loc  <- getLocOf (LVar ident)
+  getLocOf (LVar ident)
   emitExpr e1
   popl eax
-  movl eax loc
+  popl ecx
+  movl eax (LRel ECX (PointerOffset 0))
 
 emitTree (Ass lval e1) = do
-  loc <- getLocOf lval
+  getLocOf lval
   emitExpr e1
   popl eax
-  movl eax loc
+  popl ecx
+  movl eax (LRel ECX (PointerOffset 0))
 
 emitTree (Incr lval) = do
-  loc <- getLocOf lval
-  addl (LImm 1) loc
+  getLocOf lval
+  popl ecx
+  addl (LImm 1) (LRel ECX (PointerOffset 0))
 
 emitTree (Decr lval) = do
-  loc <- getLocOf lval
-  subl (LImm 1) loc
+  getLocOf lval
+  popl ecx
+  subl (LImm 1) (LRel ECX (PointerOffset 0))
 
 emitTree (Ret e1) = do
   comment "Prepare to retun a value"
@@ -124,7 +128,7 @@ emitTree (While e1 s1) = do
 
   placeLabel lEnd
 
-emitTree (For{}) = error "Arrays not supported yet"
+emitTree (For{}) = error "For loops should be changed to whiles"
 
 emitTree (SExp e1) = do
   emitExpr e1
@@ -133,12 +137,21 @@ emitTree (SExp e1) = do
 emitTree x = composOpM_ emitTree x
 
 
-getLocOf :: LVal -> X86M Loc
+getLocOf :: LVal -> X86M ()
 getLocOf (LVar ident) = do
   off <- uses localOffsetEnv (M.!ident)
-  return (LFrRel off)
+  pushl    (LFrRel off)
+  -- return (LFrRel off)
 
-getLocOf _ = error "Objects / arrays not supported yet"
+getLocOf (LArrAcc e1 e2) = do
+  emitExpr e1
+  emitExpr e2
+  popl     ecx
+  popl     eax
+  addl     ecx eax
+  pushl    eax
+
+getLocOf _ = error "Objects are not supported yet"
 
 
 emitExpr :: Expr -> X86M ()
@@ -180,8 +193,9 @@ emitExpr (EApp ident args) = do
       movl eax argloc
 
 emitExpr (ELVal lval) = do
-  loc <- getLocOf lval
-  movl  loc eax
+  getLocOf lval
+  popl  ecx
+  movl  (LRel ECX (PointerOffset 0)) eax
   pushl eax
 
 emitExpr (Neg e1) = do
@@ -208,6 +222,15 @@ emitExpr x@(EBinOp e1 op e2) = case op of
         -> storeBoolean 1 0 x
 
   _        -> error $ "Unsupported operator " ++ show op
+
+emitExpr (ArrAlloc _ e2) = do
+  emitExpr e2
+  popl  eax
+  addl  (LImm 4) eax
+  pushl eax
+  call  (LLbl $ Label "malloc")
+  addl  (LImm 4) esp
+  pushl eax
 
 emitExpr x = error $ "Unsupported expression " ++ show x
 

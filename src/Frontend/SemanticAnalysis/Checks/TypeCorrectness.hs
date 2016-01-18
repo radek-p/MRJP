@@ -54,7 +54,7 @@ declVar typ (Init ident e1) = do
   scope <- use currentScope
   when (ident `M.member` scope) $
     throwTypeError (IdentifierAlreadyDefined ident)
-  (type', e1') <- checkExpr e1
+  (type', e1') <- checkExpr e1                                     -- <---------------???
   type' <=! typ
   let doInsertion = M.insert ident $ Variable typ ident
   vEnv         %= doInsertion
@@ -67,57 +67,64 @@ checkStmtInner x = case x of
   FnDef retType fname args _ -> newScope $ do
     when (fname == Ident "main" && (not.null) args) $
       throwTypeError (InvalidMainSignature args)
-    mapM_ id $ [ declVar typ (NoInit ident) | Arg typ ident <- args]
+    sequence_ [ declVar typ (NoInit ident) | Arg typ ident <- args]
     returnType .= retType
     checkStmt x
   Ret e1 -> do
-    observeStep x
-    (type', e1') <- checkExpr e1
-    retType <- use returnType
-    forbidVoid type'
-    type' <=! retType
+    (t1', e1')       <- checkExpr e1
+    retType          <- use returnType
+    forbidVoid t1'
+    t1' <=! retType
     return $ Ret e1'
   VRet -> do
-    observeStep x
-    retType <- use returnType
-    retType <=! VoidT
+    retType          <- use returnType
+    retType ==! VoidT
     return VRet
-  BStmt _  -> newScope $ checkStmt x
+  BStmt _  ->
+    newScope $ checkStmt x
   Decl typ items -> do
-    items' <- mapM (declVar typ) items
+    items'           <- mapM (declVar typ) items
     return $ Decl typ items'
-  Init ident e1 -> do
-    var <- getVariable ident
-    let type' = getType var
-    (subtype', e1') <- checkExpr e1
-    subtype' <=! type'
-    return $ Init ident e1'
-  Ass lval e1 -> do
-    (type', ELVal lval') <- checkExpr (ELVal lval)
-    (subtype, e1')       <- checkExpr e1
-    subtype <=! type'
-    return $ Ass lval' e1'
-  Incr lval -> do
-    (type', ELVal lval') <- checkExpr (ELVal lval)
-    type' <=! IntT
-    return $ Incr lval'
-  Decr lval -> do
-    (type', ELVal lval') <- checkExpr (ELVal lval)
-    type' <=! IntT
-    return $ Decr lval'
+  Init ident1 e2 -> do
+    v1               <- getVariable ident1                         -- <---------------??? To samo?
+    (t2', e2')       <- checkExpr e2
+    t2' <=! getType v1
+    return $ Init ident1 e2'
+  Ass l1 e2 -> do
+    (t1', ELVal l1') <- checkExpr (ELVal l1)
+    (t2',       e2') <- checkExpr e2
+    t2' <=! t1'
+    return $ Ass l1' e2'
+  Incr l1 -> do
+    (t1', ELVal l1') <- checkExpr (ELVal l1)
+    t1' ==! IntT
+    return $ Incr l1'
+  Decr l1 -> do
+    (t1', ELVal l1') <- checkExpr (ELVal l1)
+    t1' ==! IntT
+    return $ Decr l1'
   Cond e1 s1 -> do
-    (type', e1') <- checkExpr e1
-    type' <=! BooleanT
+    (t1', e1')       <- checkExpr e1
+    t1' ==! BooleanT
     checkStmt (Cond e1' s1)
-  CondElse e1 s1 s2 -> do
-    (type', e1') <- checkExpr e1
-    type' <=! BooleanT
-    checkStmt (CondElse e1' s1 s2)
-  While e1 s1 -> do
-    (type', e1') <- checkExpr e1
-    type' <=! BooleanT
-    checkStmt (While e1' s1)
-  For _ _ _ _ -> arraysNotSupportedYet
+  CondElse e1 s2 s3 -> do
+    (t1', e1')     <- checkExpr e1
+    t1' <=! BooleanT
+    checkStmt (CondElse e1' s2 s3)
+  While e1 s2 -> do
+    (t1', e1')     <- checkExpr e1
+    t1' ==! BooleanT
+    checkStmt (While e1' s2)
+  For t1 ident e3 s4 -> newScope $ do
+    (t3', e3') <- checkExpr e3
+    case t3' of
+      ArrayT t3'elem -> do
+        t3'elem ==! t1
+        _ <- declVar t1 (NoInit ident)
+        return ()
+      _              ->
+        throwCheckError (OtherException "TODO Exception")
+    checkStmt (For t1 ident e3' s4)
   SExp e1 -> do
     (_, e1') <- checkExpr e1
     return $ SExp e1'
@@ -154,24 +161,36 @@ checkExprInner e1@(ELVal (LVar ident)) = do
   var <- getVariable ident
   return (getType var, e1)
 
--- Support for objects and arrays was not
--- finished yet so it was temporarily removed.
-checkExprInner (ELitNull _         ) = objectsNotSupportedYet
+checkExprInner e1@(ELitNull t1        ) = do
+  unless (isArrayType t1) $ -- TODO Objects test obj type
+    throwCheckError (OtherException "Not an array type")
+  return (t1, e1)
+
 checkExprInner (ELVal (LClsAcc _ _)) = objectsNotSupportedYet
 checkExprInner (ClsApply _ _ _     ) = objectsNotSupportedYet
 checkExprInner (ClsAlloc _         ) = objectsNotSupportedYet
 
-checkExprInner (ArrAlloc _ _       ) = arraysNotSupportedYet
-checkExprInner (ELVal (LArrAcc _ _)) = arraysNotSupportedYet
+checkExprInner (ArrAlloc t1 e2     ) = do
+  (t2', e2') <- checkExpr e2
+  t2' ==! IntT
+  return (t1, ArrAlloc t1 e2')
+
+checkExprInner (ELVal (LArrAcc e1 e2)) = do
+  (t1', e1') <- checkExpr e1
+  (t2', e2') <- checkExpr e2
+  t2' ==! IntT
+  case t1' of
+    ArrayT t3 -> return (t3, ELVal (LArrAcc e1' e2'))
+    _         -> throwCheckError (OtherException "TODO Invvalid array access")
 
 checkExprInner (Neg e1) = do
   (typ, e1') <- checkExpr e1
-  typ <=! IntT
+  typ ==! IntT
   return (IntT, Neg e1')
 
 checkExprInner (Not e1) = do
   (typ, e1') <- checkExpr e1
-  typ <=! BooleanT
+  typ ==! BooleanT
   return (BooleanT, Not e1')
 
 checkExprInner (EBinOp e1 op e2) = do
@@ -223,10 +242,20 @@ checkExprInner (EBinOp e1 op e2) = do
 
 checkExprInner _ = throwCheckError $ OtherException "Pattern not matched"
 
+isArrayType :: Type -> Bool
+isArrayType (ArrayT _) = True
+isArrayType _          = False
+
 
 -------------------------
 -- Helper functions    --
 -------------------------
+
+ensureEqual :: Type -> Type -> CheckM ()
+ensureEqual t1 t2 =
+  unless (t1 == t2) $
+    throwCheckError (OtherException $ "TODO Types should be equal: " ++ show t1 ++ " " ++ show t2)
+
 
 isSuperclassOf :: Class -> Class -> Bool
 _  `isSuperclassOf` Object = False
@@ -234,6 +263,9 @@ c1 `isSuperclassOf` (SubClass _ super _ _) =
   c1 == super || c1 `isSuperclassOf` super
 
 compatible :: Type -> Type -> CheckM Bool
+compatible (ArrayT subtype) (ArrayT type') =
+  compatible subtype type'
+
 compatible subtype type' =
   return $ subtype == type'
 
@@ -242,6 +274,14 @@ ensureCompatible' t1 t2 err = do
   res <- compatible t1 t2
   unless res (throwTypeError err)
   return ()
+
+ensureCompatible :: Type -> Type -> CheckM ()
+ensureCompatible subtype type' = ensureCompatible' subtype type' (IncompatibleTypes subtype type')
+
+
+infix 0 ==!
+(==!) :: Type -> Type -> CheckM ()
+(==!) = ensureEqual
 
 infix 0 <=!
 (<=!) :: Type -> Type -> CheckM ()
@@ -252,7 +292,5 @@ infix 0 ~~!
 t1 ~~! t2 = do
   (t1 <=! t2) `catchError` (const $ (t2 <=! t1))
 
-ensureCompatible :: Type -> Type -> CheckM ()
-ensureCompatible subtype type' = ensureCompatible' subtype type' (IncompatibleTypes subtype type')
 
 
