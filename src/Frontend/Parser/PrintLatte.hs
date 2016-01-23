@@ -168,8 +168,9 @@ instance Print Expr where
     ELitNull type_ -> prPrec i 6 (concatD [doc (showString "("), prt 0 type_, doc (showString ")null")])
     EString str -> prPrec i 6 (concatD [prt 0 str])
     EApp id exprs -> prPrec i 6 (concatD [prt 0 id, doc (showString "("), prt 0 exprs, doc (showString ")")])
-    ELVal lval -> prPrec i 6 (concatD [prt 0 lval])
     ClsApply expr id exprs -> prPrec i 6 (concatD [prt 6 expr, doc (showString "."), prt 0 id, doc (showString "("), prt 0 exprs, doc (showString ")")])
+    TClsApply type_ expr id exprs -> prPrec i 6 (concatD [doc (showString "("), prt 0 type_, doc (showString ")"), prt 6 expr, doc (showString "."), prt 0 id, doc (showString "("), prt 0 exprs, doc (showString ")")])
+    ELVal lval -> prPrec i 6 (concatD [prt 0 lval])
     ArrAlloc type_ expr -> prPrec i 5 (concatD [doc (showString "new"), prt 0 type_, doc (showString "["), prt 0 expr, doc (showString "]")])
     ClsAlloc type_ -> prPrec i 5 (concatD [doc (showString "new"), prt 0 type_])
     Neg expr -> prPrec i 5 (concatD [doc (showString "-"), prt 6 expr])
@@ -188,6 +189,7 @@ instance Print LVal where
     LVar id -> prPrec i 0 (concatD [prt 0 id])
     LArrAcc expr1 expr2 -> prPrec i 0 (concatD [prt 6 expr1, doc (showString "["), prt 0 expr2, doc (showString "]")])
     LClsAcc expr id -> prPrec i 0 (concatD [prt 6 expr, doc (showString "."), prt 0 id])
+    LTClsAcc type_ expr id -> prPrec i 0 (concatD [doc (showString "("), prt 0 type_, doc (showString ")"), prt 6 expr, doc (showString "."), prt 0 id])
 
 instance Print Op where
   prt i e = case e of

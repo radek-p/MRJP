@@ -48,6 +48,7 @@ data Loc
   | LFrRel PointerOffset         -- Address relative to %ebp
   | LAbs   Pointer               -- Absolute address
   | LRel   Reg PointerOffset     -- Absolute + offset (used for class field access)
+  | LRel2  Reg PointerOffset Reg Int -- Absolute: offset(register, index, size)
   | LImm   Int                   -- Immediate value
   | LLbl   Label                 -- Address pointed by label
   | LStr   Label
@@ -97,4 +98,5 @@ data Operation
   | CmpL
   | AndL
   | OrL
+  | LeaL
   | Jne | Jmp | Je  | JG  | JGE | JL  | JLE

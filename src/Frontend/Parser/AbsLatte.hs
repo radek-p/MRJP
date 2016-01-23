@@ -66,8 +66,9 @@ data Tree :: Tag -> * where
     ELitNull :: Type -> Tree Expr_
     EString :: String -> Tree Expr_
     EApp :: Ident -> [Expr] -> Tree Expr_
-    ELVal :: LVal -> Tree Expr_
     ClsApply :: Expr -> Ident -> [Expr] -> Tree Expr_
+    TClsApply :: Type -> Expr -> Ident -> [Expr] -> Tree Expr_
+    ELVal :: LVal -> Tree Expr_
     ArrAlloc :: Type -> Expr -> Tree Expr_
     ClsAlloc :: Type -> Tree Expr_
     Neg :: Expr -> Tree Expr_
@@ -81,6 +82,7 @@ data Tree :: Tag -> * where
     LVar :: Ident -> Tree LVal_
     LArrAcc :: Expr -> Expr -> Tree LVal_
     LClsAcc :: Expr -> Ident -> Tree LVal_
+    LTClsAcc :: Type -> Expr -> Ident -> Tree LVal_
     Plus :: Tree Op_
     Minus :: Tree Op_
     Times :: Tree Op_
@@ -139,8 +141,9 @@ instance Compos Tree where
       FunT type' types -> r FunT `a` f type' `a` foldr (a . a (r (:)) . f) (r []) types
       ELitNull type' -> r ELitNull `a` f type'
       EApp ident exprs -> r EApp `a` f ident `a` foldr (a . a (r (:)) . f) (r []) exprs
-      ELVal lval -> r ELVal `a` f lval
       ClsApply expr ident exprs -> r ClsApply `a` f expr `a` f ident `a` foldr (a . a (r (:)) . f) (r []) exprs
+      TClsApply type' expr ident exprs -> r TClsApply `a` f type' `a` f expr `a` f ident `a` foldr (a . a (r (:)) . f) (r []) exprs
+      ELVal lval -> r ELVal `a` f lval
       ArrAlloc type' expr -> r ArrAlloc `a` f type' `a` f expr
       ClsAlloc type' -> r ClsAlloc `a` f type'
       Neg expr -> r Neg `a` f expr
@@ -154,6 +157,7 @@ instance Compos Tree where
       LVar ident -> r LVar `a` f ident
       LArrAcc expr0 expr1 -> r LArrAcc `a` f expr0 `a` f expr1
       LClsAcc expr ident -> r LClsAcc `a` f expr `a` f ident
+      LTClsAcc type' expr ident -> r LTClsAcc `a` f type' `a` f expr `a` f ident
       _ -> r t
 
 instance Show (Tree c) where
@@ -197,8 +201,9 @@ instance Show (Tree c) where
     ELitNull type' -> opar n . showString "ELitNull" . showChar ' ' . showsPrec 1 type' . cpar n
     EString string -> opar n . showString "EString" . showChar ' ' . showsPrec 1 string . cpar n
     EApp ident exprs -> opar n . showString "EApp" . showChar ' ' . showsPrec 1 ident . showChar ' ' . showsPrec 1 exprs . cpar n
-    ELVal lval -> opar n . showString "ELVal" . showChar ' ' . showsPrec 1 lval . cpar n
     ClsApply expr ident exprs -> opar n . showString "ClsApply" . showChar ' ' . showsPrec 1 expr . showChar ' ' . showsPrec 1 ident . showChar ' ' . showsPrec 1 exprs . cpar n
+    TClsApply type' expr ident exprs -> opar n . showString "TClsApply" . showChar ' ' . showsPrec 1 type' . showChar ' ' . showsPrec 1 expr . showChar ' ' . showsPrec 1 ident . showChar ' ' . showsPrec 1 exprs . cpar n
+    ELVal lval -> opar n . showString "ELVal" . showChar ' ' . showsPrec 1 lval . cpar n
     ArrAlloc type' expr -> opar n . showString "ArrAlloc" . showChar ' ' . showsPrec 1 type' . showChar ' ' . showsPrec 1 expr . cpar n
     ClsAlloc type' -> opar n . showString "ClsAlloc" . showChar ' ' . showsPrec 1 type' . cpar n
     Neg expr -> opar n . showString "Neg" . showChar ' ' . showsPrec 1 expr . cpar n
@@ -212,6 +217,7 @@ instance Show (Tree c) where
     LVar ident -> opar n . showString "LVar" . showChar ' ' . showsPrec 1 ident . cpar n
     LArrAcc expr0 expr1 -> opar n . showString "LArrAcc" . showChar ' ' . showsPrec 1 expr0 . showChar ' ' . showsPrec 1 expr1 . cpar n
     LClsAcc expr ident -> opar n . showString "LClsAcc" . showChar ' ' . showsPrec 1 expr . showChar ' ' . showsPrec 1 ident . cpar n
+    LTClsAcc type' expr ident -> opar n . showString "LTClsAcc" . showChar ' ' . showsPrec 1 type' . showChar ' ' . showsPrec 1 expr . showChar ' ' . showsPrec 1 ident . cpar n
     Plus -> showString "Plus"
     Minus -> showString "Minus"
     Times -> showString "Times"
@@ -283,8 +289,9 @@ johnMajorEq ELitFalse ELitFalse = True
 johnMajorEq (ELitNull type') (ELitNull type'_) = type' == type'_
 johnMajorEq (EString string) (EString string_) = string == string_
 johnMajorEq (EApp ident exprs) (EApp ident_ exprs_) = ident == ident_ && exprs == exprs_
-johnMajorEq (ELVal lval) (ELVal lval_) = lval == lval_
 johnMajorEq (ClsApply expr ident exprs) (ClsApply expr_ ident_ exprs_) = expr == expr_ && ident == ident_ && exprs == exprs_
+johnMajorEq (TClsApply type' expr ident exprs) (TClsApply type'_ expr_ ident_ exprs_) = type' == type'_ && expr == expr_ && ident == ident_ && exprs == exprs_
+johnMajorEq (ELVal lval) (ELVal lval_) = lval == lval_
 johnMajorEq (ArrAlloc type' expr) (ArrAlloc type'_ expr_) = type' == type'_ && expr == expr_
 johnMajorEq (ClsAlloc type') (ClsAlloc type'_) = type' == type'_
 johnMajorEq (Neg expr) (Neg expr_) = expr == expr_
@@ -298,6 +305,7 @@ johnMajorEq (EBinOp expr0 op1 expr2) (EBinOp expr0_ op1_ expr2_) = expr0 == expr
 johnMajorEq (LVar ident) (LVar ident_) = ident == ident_
 johnMajorEq (LArrAcc expr0 expr1) (LArrAcc expr0_ expr1_) = expr0 == expr0_ && expr1 == expr1_
 johnMajorEq (LClsAcc expr ident) (LClsAcc expr_ ident_) = expr == expr_ && ident == ident_
+johnMajorEq (LTClsAcc type' expr ident) (LTClsAcc type'_ expr_ ident_) = type' == type'_ && expr == expr_ && ident == ident_
 johnMajorEq Plus Plus = True
 johnMajorEq Minus Minus = True
 johnMajorEq Times Times = True
@@ -368,47 +376,49 @@ index (ELitFalse ) = 35
 index (ELitNull _) = 36
 index (EString _) = 37
 index (EApp _ _) = 38
-index (ELVal _) = 39
-index (ClsApply _ _ _) = 40
-index (ArrAlloc _ _) = 41
-index (ClsAlloc _) = 42
-index (Neg _) = 43
-index (Not _) = 44
-index (EMul _ _ _) = 45
-index (EAdd _ _ _) = 46
-index (ERel _ _ _) = 47
-index (EAnd _ _ _) = 48
-index (EOr _ _ _) = 49
-index (EBinOp _ _ _) = 50
-index (LVar _) = 51
-index (LArrAcc _ _) = 52
-index (LClsAcc _ _) = 53
-index (Plus ) = 54
-index (Minus ) = 55
-index (Times ) = 56
-index (Div ) = 57
-index (Mod ) = 58
-index (LTH ) = 59
-index (LE ) = 60
-index (GTH ) = 61
-index (GE ) = 62
-index (EQU ) = 63
-index (NE ) = 64
-index (AND ) = 65
-index (OR ) = 66
-index (EQU_Int ) = 67
-index (EQU_Str ) = 68
-index (EQU_Arr ) = 69
-index (EQU_Ref ) = 70
-index (EQU_Bool ) = 71
-index (NE_Int ) = 72
-index (NE_Str ) = 73
-index (NE_Arr ) = 74
-index (NE_Ref ) = 75
-index (NE_Bool ) = 76
-index (Plus_Int ) = 77
-index (Plus_Str ) = 78
-index (Ident _) = 79
+index (ClsApply _ _ _) = 39
+index (TClsApply _ _ _ _) = 40
+index (ELVal _) = 41
+index (ArrAlloc _ _) = 42
+index (ClsAlloc _) = 43
+index (Neg _) = 44
+index (Not _) = 45
+index (EMul _ _ _) = 46
+index (EAdd _ _ _) = 47
+index (ERel _ _ _) = 48
+index (EAnd _ _ _) = 49
+index (EOr _ _ _) = 50
+index (EBinOp _ _ _) = 51
+index (LVar _) = 52
+index (LArrAcc _ _) = 53
+index (LClsAcc _ _) = 54
+index (LTClsAcc _ _ _) = 55
+index (Plus ) = 56
+index (Minus ) = 57
+index (Times ) = 58
+index (Div ) = 59
+index (Mod ) = 60
+index (LTH ) = 61
+index (LE ) = 62
+index (GTH ) = 63
+index (GE ) = 64
+index (EQU ) = 65
+index (NE ) = 66
+index (AND ) = 67
+index (OR ) = 68
+index (EQU_Int ) = 69
+index (EQU_Str ) = 70
+index (EQU_Arr ) = 71
+index (EQU_Ref ) = 72
+index (EQU_Bool ) = 73
+index (NE_Int ) = 74
+index (NE_Str ) = 75
+index (NE_Arr ) = 76
+index (NE_Ref ) = 77
+index (NE_Bool ) = 78
+index (Plus_Int ) = 79
+index (Plus_Str ) = 80
+index (Ident _) = 81
 compareSame :: Tree c -> Tree c -> Ordering
 compareSame (Program topdefs) (Program topdefs_) = compare topdefs topdefs_
 compareSame (FnTopDef fndef) (FnTopDef fndef_) = compare fndef fndef_
@@ -449,8 +459,9 @@ compareSame ELitFalse ELitFalse = EQ
 compareSame (ELitNull type') (ELitNull type'_) = compare type' type'_
 compareSame (EString string) (EString string_) = compare string string_
 compareSame (EApp ident exprs) (EApp ident_ exprs_) = mappend (compare ident ident_) (compare exprs exprs_)
-compareSame (ELVal lval) (ELVal lval_) = compare lval lval_
 compareSame (ClsApply expr ident exprs) (ClsApply expr_ ident_ exprs_) = mappend (compare expr expr_) (mappend (compare ident ident_) (compare exprs exprs_))
+compareSame (TClsApply type' expr ident exprs) (TClsApply type'_ expr_ ident_ exprs_) = mappend (compare type' type'_) (mappend (compare expr expr_) (mappend (compare ident ident_) (compare exprs exprs_)))
+compareSame (ELVal lval) (ELVal lval_) = compare lval lval_
 compareSame (ArrAlloc type' expr) (ArrAlloc type'_ expr_) = mappend (compare type' type'_) (compare expr expr_)
 compareSame (ClsAlloc type') (ClsAlloc type'_) = compare type' type'_
 compareSame (Neg expr) (Neg expr_) = compare expr expr_
@@ -464,6 +475,7 @@ compareSame (EBinOp expr0 op1 expr2) (EBinOp expr0_ op1_ expr2_) = mappend (comp
 compareSame (LVar ident) (LVar ident_) = compare ident ident_
 compareSame (LArrAcc expr0 expr1) (LArrAcc expr0_ expr1_) = mappend (compare expr0 expr0_) (compare expr1 expr1_)
 compareSame (LClsAcc expr ident) (LClsAcc expr_ ident_) = mappend (compare expr expr_) (compare ident ident_)
+compareSame (LTClsAcc type' expr ident) (LTClsAcc type'_ expr_ ident_) = mappend (compare type' type'_) (mappend (compare expr expr_) (compare ident ident_))
 compareSame Plus Plus = EQ
 compareSame Minus Minus = EQ
 compareSame Times Times = EQ

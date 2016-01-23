@@ -93,6 +93,10 @@ checkStmtInner x = case x of
   Ass l1 e2 -> do
     (t1', ELVal l1') <- checkExpr (ELVal l1)
     (t2',       e2') <- checkExpr e2
+    case l1' of -- enure that there are no assignments to array's length field
+      LTClsAcc t3 _ _ -> when (isArrayType t3) $
+        throwTypeError LengthIsNotWritable
+      _               -> return ()
     t2' <=! t1'
     return $ Ass l1' e2'
   Incr l1 -> do
@@ -119,7 +123,7 @@ checkStmtInner x = case x of
     (t3', e3') <- checkExpr e3
     case t3' of
       ArrayT t3'elem -> do
-        t3'elem ==! t1
+        t3'elem <=! t1
         _ <- declVar t1 (NoInit ident)
         return ()
       _              ->
@@ -166,7 +170,16 @@ checkExprInner e1@(ELitNull t1        ) = do
     throwCheckError (OtherException "Not an array type")
   return (t1, e1)
 
-checkExprInner (ELVal (LClsAcc _ _)) = objectsNotSupportedYet
+checkExprInner (ELVal (LClsAcc e1 i2)) = do
+  (t1', e1') <- checkExpr e1
+  case t1' of
+    ArrayT _ -> do
+      when (i2 /= lengthIdent) $
+        throwTypeError (FieldOfArray i2)
+      return (IntT, (ELVal (LTClsAcc t1' e1' i2)))
+    ClassT _cls     -> objectsNotSupportedYet
+    _               -> throwTypeError (FieldOfBuiltIn t1')
+
 checkExprInner (ClsApply _ _ _     ) = objectsNotSupportedYet
 checkExprInner (ClsAlloc _         ) = objectsNotSupportedYet
 
@@ -180,8 +193,8 @@ checkExprInner (ELVal (LArrAcc e1 e2)) = do
   (t2', e2') <- checkExpr e2
   t2' ==! IntT
   case t1' of
-    ArrayT t3 -> return (t3, ELVal (LArrAcc e1' e2'))
-    _         -> throwCheckError (OtherException "TODO Invvalid array access")
+    ArrayT t1'elem -> return (t1'elem, ELVal (LArrAcc e1' e2'))
+    _              -> throwCheckError (OtherException "TODO Invvalid array access")
 
 checkExprInner (Neg e1) = do
   (typ, e1') <- checkExpr e1
@@ -241,10 +254,6 @@ checkExprInner (EBinOp e1 op e2) = do
     _     -> error "TODO Other?"
 
 checkExprInner _ = throwCheckError $ OtherException "Pattern not matched"
-
-isArrayType :: Type -> Bool
-isArrayType (ArrayT _) = True
-isArrayType _          = False
 
 
 -------------------------

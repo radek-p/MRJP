@@ -138,8 +138,8 @@ Expr6 : Integer { Frontend.Parser.AbsLatte.ELitInt $1 }
       | '(' Type ')null' { Frontend.Parser.AbsLatte.ELitNull $2 }
       | String { Frontend.Parser.AbsLatte.EString $1 }
       | Ident '(' ListExpr ')' { Frontend.Parser.AbsLatte.EApp $1 $3 }
-      | LVal { Frontend.Parser.AbsLatte.ELVal $1 }
       | Expr6 '.' Ident '(' ListExpr ')' { Frontend.Parser.AbsLatte.ClsApply $1 $3 $5 }
+      | LVal { Frontend.Parser.AbsLatte.ELVal $1 }
       | Expr7 { $1 }
 Expr5 :: { Expr }
 Expr5 : 'new' Type '[' Expr ']' { Frontend.Parser.AbsLatte.ArrAlloc $2 $4 }

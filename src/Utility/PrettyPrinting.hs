@@ -82,9 +82,8 @@ instance Printable (Tree a) where
     EApp      {} -> P.printTree x
     EString   {} -> P.printTree x
     ELVal     {} -> P.printTree x
-    -- EVar      {} -> P.printTree x
-    -- ArrAccess {} -> P.printTree x
-    -- ClsAccess {} -> P.printTree x
+    TClsApply {} -> P.printTree x
+    LTClsAcc  {} -> P.printTree x
     ClsApply  {} -> P.printTree x
     ArrAlloc  {} -> P.printTree x
     ClsAlloc  {} -> P.printTree x

@@ -2,6 +2,7 @@
 module Backend.X86.Emitter where
 
 import Control.Lens hiding ( op )
+import Control.Monad
 
 import Language.BuiltIns
 import Frontend.Parser.AbsLatte
@@ -146,13 +147,22 @@ getLocOf (LVar ident) = do
 getLocOf (LArrAcc e1 e2) = do
   emitExpr e1
   emitExpr e2
-  popl     ecx
-  popl     eax
-  addl     ecx eax
+  popl     ecx      -- array index
+  popl     eax      -- pointer to array returned by e1
+  leal     (LRel2 EAX (PointerOffset 0) ECX 4) eax
   pushl    eax
 
-getLocOf _ = error "Objects are not supported yet"
+getLocOf (LTClsAcc t1 e2 i3) | isArrayType t1 = do
+  when (i3 /= lengthIdent) $
+    error "Internal error"      -- arrays ao far have only one field
+  emitExpr e2
+  popl     eax
+  subl     (LImm 4) eax
+  pushl    eax
 
+getLocOf (LTClsAcc {}) = error "Objects are not supported yet"
+
+getLocOf _ = error "Internal error: wrong LVal type in Emitter:hs"
 
 emitExpr :: Expr -> X86M ()
 emitExpr (ELitInt n) =
@@ -226,10 +236,12 @@ emitExpr x@(EBinOp e1 op e2) = case op of
 emitExpr (ArrAlloc _ e2) = do
   emitExpr e2
   popl  eax
-  addl  (LImm 4) eax
+  addl  (LImm 1) eax -- first entry - array length
+  imull (LImm 4) eax -- multiply the length by the size of array item (4 bytes)
   pushl eax
   call  (LLbl $ Label "malloc")
   addl  (LImm 4) esp
+  addl  (LImm 4) eax
   pushl eax
 
 emitExpr x = error $ "Unsupported expression " ++ show x

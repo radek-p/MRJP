@@ -30,15 +30,14 @@ data TypeError
   | VariableNotFound Ident
   | MethodNotFound   Ident Class
   | FieldNotFound    Ident Class
-  | FieldOfString    Ident
   | FieldOfArray     Ident
-  | FieldOfFunction  Ident
   | FieldOfBuiltIn   Type
   | InvalidTypeOfNullLit Type
   | TEApp [Type] [Type]
   | TEArrIdx     Type
   | TEArrAlocLen Type
   | TEArr        Type
+  | LengthIsNotWritable
   | IncompatibleTypes Type Type
   | ObjAllocBadType  Type
   | InvalidOperandTypes Type Type
@@ -81,9 +80,7 @@ instance Show TypeError where
     VariableNotFound ident -> "Unknown variable "       ++ printTree ident
     MethodNotFound   ident cls -> "Class " ++ printTree (getIdent cls) ++ " has no method " ++ printTree ident
     FieldNotFound    ident cls -> "Class " ++ printTree (getIdent cls) ++ " has no field "  ++ printTree ident
-    FieldOfString    ident     -> "String doesn't have field "    ++ printTree ident
     FieldOfArray     ident     -> "Array doesn't have field "     ++ printTree ident
-    FieldOfFunction  ident     -> "Function has no field "        ++ printTree ident
     FieldOfBuiltIn   ident     -> "Builtin functio has no field " ++ printTree ident
     InvalidTypeOfNullLit ident -> "Invalid type of null literal " ++ printTree ident
     TEApp tl1 tl2              -> "Argument types do not match: ("
@@ -101,6 +98,7 @@ instance Show TypeError where
     IdentifierAlreadyDefined ident   -> "Identifier was already defined in this scope: " ++ printTree ident
     InvalidMainSignature args  -> "Invalid signature of function main: " ++ printBoldWhite ("main(" ++ intercalate ", " (map printTree args) ++ ")") ++ printRed "."
     VoidNotAllowed             -> "Void has no value, it cannot be assigned."
+    LengthIsNotWritable        -> "Array property 'length' is L-Value, it cannot be assigned."
 
 showFnDef :: FnDef -> String
 showFnDef (FnDef typ ident args _) =

@@ -50,6 +50,7 @@ instance GasmPrint Operation where
     JLE   -> "jle"
     AndL  -> "andl"
     OrL   -> "orl"
+    LeaL  -> "leal"
 
 instance GasmPrint Reg where
   printGasm r = "%" ++ case r of
@@ -76,6 +77,8 @@ instance GasmPrint Loc where
     LFrRel off     -> printGasm off ++ "(%ebp)"
     LAbs   ptr     -> "$" ++ printGasm ptr
     LRel   ptr off -> (if (off == PointerOffset 0) then "" else printGasm off) ++ "(" ++ printGasm ptr ++ ")"
+    LRel2  reg off reg2 sz -> (if (off == PointerOffset 0) then "" else printGasm off) ++
+                              "(" ++ printGasm reg ++ ", " ++ printGasm reg2 ++ ", " ++ show sz ++ ")"
     LImm   n       -> "$" ++ show n
     LLbl   lbl     -> printGasm lbl
     LStr   lbl     -> "$" ++ printGasm lbl

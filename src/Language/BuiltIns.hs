@@ -16,6 +16,9 @@ builtInIdents = map Ident ["int", "boolean", "string", "void"]
 lengthIdent :: Ident
 lengthIdent = Ident "length"
 
+isArrayType :: Type -> Bool
+isArrayType (ArrayT _) = True
+isArrayType _          = False
 
 data Variable
   = Variable Type Ident

@@ -52,8 +52,9 @@ transTree t = case t of
   ELitNull type' -> failure t
   EString string -> failure t
   EApp ident exprs -> failure t
-  ELVal lval -> failure t
   ClsApply expr ident exprs -> failure t
+  TClsApply type' expr ident exprs -> failure t
+  ELVal lval -> failure t
   ArrAlloc type' expr -> failure t
   ClsAlloc type' -> failure t
   Neg expr -> failure t
@@ -67,6 +68,7 @@ transTree t = case t of
   LVar ident -> failure t
   LArrAcc expr0 expr1 -> failure t
   LClsAcc expr ident -> failure t
+  LTClsAcc type' expr ident -> failure t
   Plus  -> failure t
   Minus  -> failure t
   Times  -> failure t
@@ -168,8 +170,9 @@ transExpr t = case t of
   ELitNull type' -> failure t
   EString string -> failure t
   EApp ident exprs -> failure t
-  ELVal lval -> failure t
   ClsApply expr ident exprs -> failure t
+  TClsApply type' expr ident exprs -> failure t
+  ELVal lval -> failure t
   ArrAlloc type' expr -> failure t
   ClsAlloc type' -> failure t
   Neg expr -> failure t
@@ -186,6 +189,7 @@ transLVal t = case t of
   LVar ident -> failure t
   LArrAcc expr0 expr1 -> failure t
   LClsAcc expr ident -> failure t
+  LTClsAcc type' expr ident -> failure t
 
 transOp :: Op -> Result
 transOp t = case t of

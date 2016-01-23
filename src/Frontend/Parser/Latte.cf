@@ -69,12 +69,14 @@ ELitTrue.  Expr6 ::= "true" ;
 ELitFalse. Expr6 ::= "false" ;
 ELitNull.  Expr6 ::= "(" Type ")null" ;
 EString.   Expr6 ::= String ;
-EApp.      Expr6 ::= Ident "(" [Expr] ")" ;
+EApp.      Expr6 ::=           Ident "(" [Expr] ")" ;
+ClsApply.  Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
+internal TClsApply. Expr6 ::= "(" Type ")" Expr6 "." Ident "(" [Expr] ")" ;
+
 ELVal.     Expr6 ::= LVal ; -- Instead of those rules:
 -- EVar.      Expr6 ::= Ident ;                         -- LVal
 -- ArrAccess. Expr6 ::= Expr6 "[" Expr "]" ;            -- LVal
 -- ClsAccess. Expr6 ::= Expr6 "." Ident ;               -- LVal
-ClsApply.  Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
 
 ArrAlloc.  Expr5 ::= "new" Type "[" Expr "]" ;
 ClsAlloc.  Expr5 ::= "new" Type ;
@@ -96,6 +98,9 @@ separator  Expr "," ;
 LVar.      LVal ::= Ident ;
 LArrAcc.   LVal ::= Expr6 "[" Expr "]" ;
 LClsAcc.   LVal ::= Expr6 "." Ident ;
+
+-- we have to remember the type of an object to acces its fields
+internal LTClsAcc. LVal ::= "(" Type ")" Expr6 "." Ident ;
 
 -- operators -----------------------------------------------
 
