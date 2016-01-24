@@ -11,7 +11,7 @@ import Backend.X86.Emitter
 import Backend.X86.GasmPrint
 import Backend.X86.Transformations.UnifyVariables
 import Backend.X86.Transformations.InitialisationOfVariables
-import Backend.X86.ASMTransformations.SimplifyStackOperations
+--import Backend.X86.ASMTransformations.SimplifyStackOperations
 
 
 ----------------------------------------------------------------------------
@@ -36,7 +36,7 @@ genASM p1 = do
   let stmts    = reverse $ st ^. emittedStmts
   let preamble = reverse $ st ^. preambleStmts
 
-  let stmts'   = simplifyStackOperations stmts
+  let stmts'   = stmts -- simplifyStackOperations stmts
 
   liftIO $ putStrLn "[ 2/2 ] Compilation."
 

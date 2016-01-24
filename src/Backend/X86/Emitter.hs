@@ -141,7 +141,8 @@ emitTree x = composOpM_ emitTree x
 getLocOf :: LVal -> X86M ()
 getLocOf (LVar ident) = do
   off <- uses localOffsetEnv (M.!ident)
-  pushl    (LFrRel off)
+  leal   (LFrRel off) eax
+  pushl  eax
   -- return (LFrRel off)
 
 getLocOf (LArrAcc e1 e2) = do
