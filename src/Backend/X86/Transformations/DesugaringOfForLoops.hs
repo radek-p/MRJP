@@ -23,6 +23,8 @@ desugarForLoops = composOp processNode
           Decl t1 [NoInit i2],
           -- while (#For_counter < #For_array.length) {
           While (EBinOp (ELVal $ LVar counterId) LTH (ELVal $ LTClsAcc (ArrayT t1) (ELVal (LVar arrayId)) lengthIdent)) $ BStmt (Block [
+              -- i2 = #For_array[#For_counter] ;
+              Ass (LVar i2) (ELVal $ LArrAcc (ELVal (LVar arrayId)) (ELVal (LVar counterId))),
               -- s4 ;
               desugarForLoops s4,
               -- #For_counter++;
