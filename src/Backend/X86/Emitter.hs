@@ -237,11 +237,14 @@ emitExpr x@(EBinOp e1 op e2) = case op of
 emitExpr (ArrAlloc _ e2) = do
   emitExpr e2
   popl  eax
+  pushl eax
   addl  (LImm 1) eax -- first entry - array length
   imull (LImm 4) eax -- multiply the length by the size of array item (4 bytes)
   pushl eax
   call  (LLbl $ Label "malloc")
   addl  (LImm 4) esp
+  popl  ecx
+  movl  ecx (LRel EAX (PointerOffset 0))
   addl  (LImm 4) eax
   pushl eax
 
