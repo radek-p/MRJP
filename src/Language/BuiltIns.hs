@@ -101,8 +101,7 @@ defaultValue t = case t of
   BooleanT -> ELitFalse
   StringT  -> EString  ""
   VoidT    -> error "Void has no default value"
-  ArrayT _ -> ELitNull t
-  _        -> error "Default values of other types were not specified yet."
+  _        -> ELitNull t
 
 initialFEnv :: Env' Function
 initialFEnv = M.fromList [
