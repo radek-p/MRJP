@@ -12,11 +12,12 @@ data CEType
   = OtherException String -- required by Error class
   | FunctionNamesNotUnique
   | ClassNamesNotUnique
+  | ClassFieldsNotUnique  Ident
+  | ClassMethodsNotUnique Ident
   | MainFunctionNotDefined
   | RestrictedIdentifier Ident
   | UninitializedVarUsage Ident
   | CyclicInherritance [[Ident]]
-  | ClassFieldInitialised
   | NestedVariableDeclaration
   | TypeError TypeError
   | FeatureNotSupported String
@@ -63,7 +64,8 @@ instance Show CEType where
     UninitializedVarUsage i    -> "Variable " ++ printTree i ++ "  was not initialized before use" -- TODO Maybe remove.
     CyclicInherritance ids     -> "Cyclic inherritance detected:  " ++
                                   intercalate ";" [ intercalate "," (map printTree cyc) | cyc <- ids ]
-    ClassFieldInitialised      -> "Class fields cannot be initialised with default value."
+    ClassFieldsNotUnique  cls  -> "Identifiers of fields are not unique in definition of class  " ++ printBoldWhite (printTree cls) ++ printRed " ."
+    ClassMethodsNotUnique cls  -> "Names of methods of class  " ++ printBoldWhite (printTree cls) ++ printRed "  are not unique."
     NestedVariableDeclaration  -> "Variables can be declared only at block level."
     RestrictedIdentifier i     -> "Restricted identifier  " ++ printTree i ++ "  was used."
     FeatureNotSupported s      -> "Feature is not supported yet: " ++ s

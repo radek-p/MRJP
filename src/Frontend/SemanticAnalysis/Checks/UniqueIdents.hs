@@ -14,7 +14,10 @@ import Frontend.SemanticAnalysis.CheckError
 
 
 checkIdentsUnique :: Program -> CheckM ()
-checkIdentsUnique p = checkFunctionNames p >> checkClassNames p
+checkIdentsUnique p = do
+  mapM_ (\a -> a p) [
+      checkFunctionNames, checkClassNames, checkClasses
+    ]
 
 checkFunctionNames :: Program -> CheckM ()
 checkFunctionNames (Program topdefs)
@@ -39,3 +42,22 @@ checkClassNames (Program topdefs)
       idents2 = [ ident | ClsTopDef (ClsDefEx ident _ _) <- topdefs ]
       idents  = idents1 ++ idents2
       idents' = S.fromList idents
+
+checkClasses :: Program -> CheckM ()
+checkClasses (Program topdefs) =
+  mapM_ checkClass classes
+  where
+    classes1 = [ (ident, memdefs) | ClsTopDef (ClsDef   ident   memdefs) <- topdefs ]
+    classes2 = [ (ident, memdefs) | ClsTopDef (ClsDefEx ident _ memdefs) <- topdefs ]
+    classes = classes1 ++ classes2
+
+checkClass :: (Ident, [MemberDef]) -> CheckM ()
+checkClass (cident, memdefs)
+  | length fields1  /= S.size fields  = throwCheckError $ ClassFieldsNotUnique  cident
+  | length methods1 /= S.size methods = throwCheckError $ ClassMethodsNotUnique cident
+  | otherwise                         = return ()
+  where
+    fields1  = [ ident | FieldDef _ items           <- memdefs, FdNoInit ident <- items ]
+    methods1 = [ ident | MetDef (FnDef _ ident _ _) <- memdefs ]
+    fields   = S.fromList $ fields1
+    methods  = S.fromList $ methods1
