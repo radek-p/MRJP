@@ -4,7 +4,7 @@ dir=$(dirname $0)
 bin="$dir/LatteC"
 testDir="$dir/../tests/"
 
-declare -a good=($testDir/good/*.lat) ### $testDir/extensions/*/*.lat)
+declare -a good=($testDir/good/*.lat $testDir/extensions/struct/*.lat)
 declare -a bad=($testDir/bad/*.lat)
 
 # Colors

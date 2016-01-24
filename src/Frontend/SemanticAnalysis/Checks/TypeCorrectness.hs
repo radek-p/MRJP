@@ -36,7 +36,19 @@ newScope m = do
   return res
 
 forbidVoid :: Type -> CheckM ()
-forbidVoid t = when (t == VoidT) $ throwTypeError VoidNotAllowed
+forbidVoid t = do
+  when (t == VoidT) $ throwTypeError VoidNotAllowed
+  case t of
+    ArrayT inner -> forbidVoid inner
+    _            -> return ()
+
+withClass :: Ident -> CheckM a -> CheckM a
+withClass ident a = do
+ cls <- getClass ident
+ currentClass .= Just cls
+ ret <- a
+ currentClass .= Nothing
+ return ret
 
 declVar :: Type -> Item -> CheckM Item
 declVar typ x@(NoInit ident) = do
@@ -63,10 +75,8 @@ declVar typ (Init ident e1) = do
 
 checkStmtInner :: Tree a -> CheckM (Tree a)
 checkStmtInner x = case x of
-  ClsDefEx ident _ _ -> do
-    cls <- getClass ident
-    currentClass .= Just cls
-    checkStmt x
+  ClsDefEx ident _ _ -> withClass ident $ checkStmt x
+  ClsDef   ident   _ -> withClass ident $ checkStmt x
   MetDef   (FnDef retType _ args _) -> newScope $ do
     sequence_ [ declVar typ (NoInit ident) | Arg typ ident <- args]
     mcls <- use currentClass
@@ -172,14 +182,30 @@ checkExprInner e1@(ELitTrue ) = return (BooleanT, e1)
 checkExprInner e1@(ELitFalse) = return (BooleanT, e1)
 checkExprInner e1@(EString _) = return ( StringT, e1)
 
-checkExprInner (EApp ident args) = do
-  fun              <- getFunction ident
-  (retType, args') <- checkApp fun args
-  return (retType, EApp ident args')
+checkExprInner (EApp ident args) = catchError (do
+    fun              <- getFunction ident
+    (retType, args') <- checkApp fun args
+    return (retType, EApp ident args')
+  ) (\err -> do
+    mcls <- use currentClass
+    case mcls of
+      Just cls -> do
+        _ <- getMethod ident cls
+        checkExpr (TClsApply (getType cls) (ELVal $ LVar thisIdent) ident args)
+      _ -> throwError err
+  )
 
-checkExprInner e1@(ELVal (LVar ident)) = do
-  var <- getVariable ident
-  return (getType var, e1)
+checkExprInner e1@(ELVal (LVar ident)) = catchError (do
+    var <- getVariable ident
+    return (getType var, e1)
+  ) (\err -> do
+    mcls <- use currentClass
+    case mcls of -- If we're checking a method of class, we also have to inspect its fields
+      Just cls -> do
+        field <- getField ident cls
+        return (getType field, ELVal (LClsAcc (ELVal $ LVar thisIdent) ident))
+      _        -> throwError err
+  )
 
 checkExprInner e1@(ELitNull t1        ) = do
   unless (isArrayType t1 || isObjectType t1) $
