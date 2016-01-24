@@ -331,6 +331,11 @@ compatible :: Type -> Type -> CheckM Bool
 compatible (ArrayT subtype) (ArrayT type') =
   compatible subtype type'
 
+compatible (ClassT subclassId) (ClassT superclassId) = do
+  subclass   <- getClass subclassId
+  superclass <- getClass superclassId
+  return (superclass `isSuperclassOf` subclass)
+
 compatible subtype type' =
   return $ subtype == type'
 
