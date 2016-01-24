@@ -178,7 +178,7 @@ checkExprInner (ELVal (LClsAcc e1 i2)) = do
         throwTypeError (FieldOfArray i2)
       return (IntT, (ELVal (LTClsAcc t1' e1' i2)))
     ClassT _cls     -> objectsNotSupportedYet
-    _               -> throwTypeError (FieldOfBuiltIn t1')
+    _               -> throwTypeError (FieldOfBuiltIn t1' i2)
 
 checkExprInner (ClsApply _ _ _     ) = objectsNotSupportedYet
 checkExprInner (ClsAlloc _         ) = objectsNotSupportedYet

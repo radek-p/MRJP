@@ -31,7 +31,7 @@ data TypeError
   | MethodNotFound   Ident Class
   | FieldNotFound    Ident Class
   | FieldOfArray     Ident
-  | FieldOfBuiltIn   Type
+  | FieldOfBuiltIn   Type Ident
   | InvalidTypeOfNullLit Type
   | TEApp [Type] [Type]
   | TEArrIdx     Type
@@ -81,7 +81,7 @@ instance Show TypeError where
     MethodNotFound   ident cls -> "Class " ++ printTree (getIdent cls) ++ " has no method " ++ printTree ident
     FieldNotFound    ident cls -> "Class " ++ printTree (getIdent cls) ++ " has no field "  ++ printTree ident
     FieldOfArray     ident     -> "Array doesn't have field "     ++ printTree ident
-    FieldOfBuiltIn   ident     -> "Builtin functio has no field " ++ printTree ident
+    FieldOfBuiltIn   t1 ident  -> "Builtin type " ++ printBoldWhite (printTree t1) ++ " has no field " ++ printBoldWhite (printTree ident)
     InvalidTypeOfNullLit ident -> "Invalid type of null literal " ++ printTree ident
     TEApp tl1 tl2              -> "Argument types do not match: ("
                                     ++ intercalate ", " (map printTree tl1) ++ ") /= ("
