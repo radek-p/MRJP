@@ -183,16 +183,16 @@ checkExprInner e1@(ELitFalse) = return (BooleanT, e1)
 checkExprInner e1@(EString _) = return ( StringT, e1)
 
 checkExprInner (EApp ident args) = catchError (do
-    fun              <- getFunction ident
-    (retType, args') <- checkApp fun args
-    return (retType, EApp ident args')
-  ) (\err -> do
     mcls <- use currentClass
     case mcls of
       Just cls -> do
         _ <- getMethod ident cls
         checkExpr (TClsApply (getType cls) (ELVal $ LVar thisIdent) ident args)
-      _ -> throwError err
+      _ -> throwCheckError (OtherException "Not in class")
+  ) (\_err -> do -- if we failed to find apropriate method we have to search fEnv also
+    fun              <- getFunction ident
+    (retType, args') <- checkApp fun args
+    return (retType, EApp ident args')
   )
 
 checkExprInner e1@(ELVal (LVar ident)) = catchError (do
