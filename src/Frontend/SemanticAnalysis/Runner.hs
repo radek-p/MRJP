@@ -50,4 +50,4 @@ checkProgram p0 = do
   return p3
 
 initialState :: CheckState
-initialState = CheckState initialEnv undefined (M.empty) Normal
+initialState = CheckState initialEnv undefined (M.empty) Normal Nothing
