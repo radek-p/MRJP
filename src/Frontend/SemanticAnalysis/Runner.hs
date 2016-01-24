@@ -19,6 +19,7 @@ import Frontend.SemanticAnalysis.Checks.TypeCorrectness
 --import Frontend.SemanticAnalysis.Transformations.ConstantPropagation hiding ( initialState )
 import Frontend.SemanticAnalysis.Transformations.SimpleElimination
 import Frontend.SemanticAnalysis.Checks.ProperReturnStatements
+import Frontend.SemanticAnalysis.Checks.MethodOverriding
 
 
 checkProgram :: Program -> CheckM Program
@@ -39,6 +40,7 @@ checkProgram p0 = do
   buildEnv p1
   liftIO $ putStrLn "[ 2/3 ] Semantic analysis."
 
+  sequence_ [ checkMO ]
   -- second pass of checks
   p2 <- checkTC p1
 
