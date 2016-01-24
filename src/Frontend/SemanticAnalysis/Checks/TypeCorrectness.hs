@@ -186,7 +186,7 @@ checkExprInner (ClsAlloc _         ) = objectsNotSupportedYet
 checkExprInner (ArrAlloc t1 e2     ) = do
   (t2', e2') <- checkExpr e2
   t2' ==! IntT
-  return (t1, ArrAlloc t1 e2')
+  return (ArrayT t1, ArrAlloc t1 e2')
 
 checkExprInner (ELVal (LArrAcc e1 e2)) = do
   (t1', e1') <- checkExpr e1
