@@ -32,8 +32,7 @@ data Variable
   deriving (Show, Eq)
 
 data Function
-  = Function  Type Ident [Variable] Block
-  | BuiltInFn Type Ident
+  = Function  Type Ident
   deriving (Show, Eq)
 
 data Class
@@ -57,8 +56,7 @@ instance HasIdent Variable where
   getIdent (Variable _ i) = i
 
 instance HasIdent Function where
-  getIdent (Function  _ i _ _) = i
-  getIdent (BuiltInFn _ i    ) = i
+  getIdent (Function  _ i) = i
 
 instance HasIdent Class where
   getIdent (SubClass i _ _ _) = i
@@ -72,8 +70,7 @@ instance HasType Variable where
   getType (Variable t _) = t
 
 instance HasType Function where
-  getType (Function t _ _ _) = t
-  getType (BuiltInFn  t _  ) = t
+  getType (Function t _) = t
 
 instance HasType Class where
   getType = ClassT . getIdent
@@ -87,12 +84,12 @@ concatIdent = Ident "liblatteConcat"
 
 builtInFunctions :: [Function]
 builtInFunctions = [
-    BuiltInFn (FunT VoidT   [IntT]   ) (Ident "printInt"),
-    BuiltInFn (FunT VoidT   [StringT]) (Ident "printString"),
-    BuiltInFn (FunT IntT    []       ) (Ident "readInt"),
-    BuiltInFn (FunT StringT []       ) (Ident "readString"),
-    BuiltInFn (FunT VoidT   []       ) (Ident "error"),
-    BuiltInFn (FunT StringT [StringT, StringT]) concatIdent
+    Function (FunT VoidT   [IntT]   ) (Ident "printInt"),
+    Function (FunT VoidT   [StringT]) (Ident "printString"),
+    Function (FunT IntT    []       ) (Ident "readInt"),
+    Function (FunT StringT []       ) (Ident "readString"),
+    Function (FunT VoidT   []       ) (Ident "error"),
+    Function (FunT StringT [StringT, StringT]) concatIdent
   ]
 
 defaultValue :: Type -> Expr

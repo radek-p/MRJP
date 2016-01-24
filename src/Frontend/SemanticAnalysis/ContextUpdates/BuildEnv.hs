@@ -31,16 +31,16 @@ getFunctionType :: FnDef -> Type
 getFunctionType (FnDef rt _ args _) =
   FunT rt [ typ | (Arg typ _) <- args ]
 
-args2vars :: [Arg] -> [Variable]
-args2vars args = [ Variable typ ident | (Arg typ ident) <- args ]
+--args2vars :: [Arg] -> [Variable]
+--args2vars args = [ Variable typ ident | (Arg typ ident) <- args ]
 
 getClassMethods :: [MemberDef] -> Env' Function
 getClassMethods members =
   M.fromList $ do
-    MetDef fd@(FnDef _ ident args body) <- members
+    MetDef fd@(FnDef _ ident _args _body) <- members
     return (
         ident,
-        Function (getFunctionType fd) ident (args2vars args) body
+        Function (getFunctionType fd) ident
       )
 
 updateSubclasses :: T.Tree Class -> T.Tree Class
@@ -76,8 +76,8 @@ getClasses (Program topdefs) = do
 getFunctions :: Program -> CheckM (Env' Function)
 getFunctions (Program topdefs) =
   return.M.fromList $ do
-    FnTopDef fd@(FnDef _ ident args body) <- topdefs
+    FnTopDef fd@(FnDef _ ident _args _body) <- topdefs
     return (
         ident,
-        Function (getFunctionType fd) ident (args2vars args) body
+        Function (getFunctionType fd) ident
       )
