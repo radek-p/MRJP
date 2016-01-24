@@ -231,7 +231,7 @@ checkExprInner (EBinOp e1 op e2) = do
         IntT     -> return (BooleanT, EBinOp e1' EQU_Int  e2')
         BooleanT -> return (BooleanT, EBinOp e1' EQU_Bool e2')
         StringT  -> return (BooleanT, EBinOp e1' EQU_Str  e2')
-        ArrayT _ -> arraysNotSupportedYet
+        ArrayT _ -> return (BooleanT, EBinOp e1' EQU_Arr  e2')
         ClassT _ -> objectsNotSupportedYet
         _        -> throwTypeError $ InvalidOperandTypes t1 t2
     NE   -> do
@@ -241,7 +241,7 @@ checkExprInner (EBinOp e1 op e2) = do
         IntT     -> return (BooleanT, EBinOp e1' NE_Int  e2')
         BooleanT -> return (BooleanT, EBinOp e1' NE_Bool e2')
         StringT  -> return (BooleanT, EBinOp e1' NE_Str  e2')
-        ArrayT _ -> arraysNotSupportedYet
+        ArrayT _ -> return (BooleanT, EBinOp e1' NE_Arr  e2')
         ClassT _ -> objectsNotSupportedYet
         _        -> throwTypeError $ InvalidOperandTypes t1 t2
     Plus  -> do

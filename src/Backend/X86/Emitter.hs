@@ -292,6 +292,8 @@ emitBooleanExpr (EBinOp e1 op e2) lTrue lFalse lNext = do
     NE_Int   -> referenceNEquality
     EQU_Bool -> referenceEquality
     NE_Bool  -> referenceNEquality
+    EQU_Arr  -> referenceEquality
+    NE_Arr   -> referenceNEquality
     LTH      -> comparison jl    jge
     LE       -> comparison jle   jg
     GTH      -> comparison jg    jle
