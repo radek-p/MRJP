@@ -70,7 +70,7 @@ data Tree :: Tag -> * where
     TClsApply :: Type -> Expr -> Ident -> [Expr] -> Tree Expr_
     ELVal :: LVal -> Tree Expr_
     ArrAlloc :: Type -> Expr -> Tree Expr_
-    ClsAlloc :: Type -> Tree Expr_
+    ClsAlloc :: Ident -> Tree Expr_
     Neg :: Expr -> Tree Expr_
     Not :: Expr -> Tree Expr_
     EMul :: Expr -> Op -> Expr -> Tree Expr_
@@ -145,7 +145,7 @@ instance Compos Tree where
       TClsApply type' expr ident exprs -> r TClsApply `a` f type' `a` f expr `a` f ident `a` foldr (a . a (r (:)) . f) (r []) exprs
       ELVal lval -> r ELVal `a` f lval
       ArrAlloc type' expr -> r ArrAlloc `a` f type' `a` f expr
-      ClsAlloc type' -> r ClsAlloc `a` f type'
+      ClsAlloc ident -> r ClsAlloc `a` f ident
       Neg expr -> r Neg `a` f expr
       Not expr -> r Not `a` f expr
       EMul expr0 op1 expr2 -> r EMul `a` f expr0 `a` f op1 `a` f expr2
@@ -205,7 +205,7 @@ instance Show (Tree c) where
     TClsApply type' expr ident exprs -> opar n . showString "TClsApply" . showChar ' ' . showsPrec 1 type' . showChar ' ' . showsPrec 1 expr . showChar ' ' . showsPrec 1 ident . showChar ' ' . showsPrec 1 exprs . cpar n
     ELVal lval -> opar n . showString "ELVal" . showChar ' ' . showsPrec 1 lval . cpar n
     ArrAlloc type' expr -> opar n . showString "ArrAlloc" . showChar ' ' . showsPrec 1 type' . showChar ' ' . showsPrec 1 expr . cpar n
-    ClsAlloc type' -> opar n . showString "ClsAlloc" . showChar ' ' . showsPrec 1 type' . cpar n
+    ClsAlloc ident -> opar n . showString "ClsAlloc" . showChar ' ' . showsPrec 1 ident . cpar n
     Neg expr -> opar n . showString "Neg" . showChar ' ' . showsPrec 1 expr . cpar n
     Not expr -> opar n . showString "Not" . showChar ' ' . showsPrec 1 expr . cpar n
     EMul expr0 op1 expr2 -> opar n . showString "EMul" . showChar ' ' . showsPrec 1 expr0 . showChar ' ' . showsPrec 1 op1 . showChar ' ' . showsPrec 1 expr2 . cpar n
@@ -293,7 +293,7 @@ johnMajorEq (ClsApply expr ident exprs) (ClsApply expr_ ident_ exprs_) = expr ==
 johnMajorEq (TClsApply type' expr ident exprs) (TClsApply type'_ expr_ ident_ exprs_) = type' == type'_ && expr == expr_ && ident == ident_ && exprs == exprs_
 johnMajorEq (ELVal lval) (ELVal lval_) = lval == lval_
 johnMajorEq (ArrAlloc type' expr) (ArrAlloc type'_ expr_) = type' == type'_ && expr == expr_
-johnMajorEq (ClsAlloc type') (ClsAlloc type'_) = type' == type'_
+johnMajorEq (ClsAlloc ident) (ClsAlloc ident_) = ident == ident_
 johnMajorEq (Neg expr) (Neg expr_) = expr == expr_
 johnMajorEq (Not expr) (Not expr_) = expr == expr_
 johnMajorEq (EMul expr0 op1 expr2) (EMul expr0_ op1_ expr2_) = expr0 == expr0_ && op1 == op1_ && expr2 == expr2_
@@ -463,7 +463,7 @@ compareSame (ClsApply expr ident exprs) (ClsApply expr_ ident_ exprs_) = mappend
 compareSame (TClsApply type' expr ident exprs) (TClsApply type'_ expr_ ident_ exprs_) = mappend (compare type' type'_) (mappend (compare expr expr_) (mappend (compare ident ident_) (compare exprs exprs_)))
 compareSame (ELVal lval) (ELVal lval_) = compare lval lval_
 compareSame (ArrAlloc type' expr) (ArrAlloc type'_ expr_) = mappend (compare type' type'_) (compare expr expr_)
-compareSame (ClsAlloc type') (ClsAlloc type'_) = compare type' type'_
+compareSame (ClsAlloc ident) (ClsAlloc ident_) = compare ident ident_
 compareSame (Neg expr) (Neg expr_) = compare expr expr_
 compareSame (Not expr) (Not expr_) = compare expr expr_
 compareSame (EMul expr0 op1 expr2) (EMul expr0_ op1_ expr2_) = mappend (compare expr0 expr0_) (mappend (compare op1 op1_) (compare expr2 expr2_))

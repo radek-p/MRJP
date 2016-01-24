@@ -32,9 +32,10 @@ data CheckState
       Type            -- return type for checked function
       (Env' Variable) -- variables defined in current scope
       RunMode         -- run mode
+      (Maybe Class)   -- current class
 
 instance HasRunMode CheckState where
-  runMode = lens (\(CheckState _ _ _ rm) -> rm) (\(CheckState a b c _ ) rm -> CheckState a b c rm)
+  runMode = lens (\(CheckState _ _ _ rm _) -> rm) (\(CheckState a b c _ e) rm -> CheckState a b c rm e)
 
 
 --------------------------------------
@@ -48,14 +49,14 @@ vEnv' = lens (\(ve,  _,  _) -> ve) (\( _, fe, ce) ve -> (ve, fe, ce))
 fEnv' = lens (\( _, fe,  _) -> fe) (\(ve,  _, ce) fe -> (ve, fe, ce))
 cEnv' = lens (\( _,  _, ce) -> ce) (\(ve, fe,  _) ce -> (ve, fe, ce))
 
-env :: Lens' CheckState Env
-env = lens (\(CheckState ev _ _ _) -> ev) (\(CheckState _ rt sc rm) ev -> CheckState ev rt sc rm)
-
-returnType :: Lens' CheckState Type
-returnType = lens (\(CheckState _ rt _ _) -> rt) (\(CheckState ev _ sc rm) rt -> CheckState ev rt sc rm)
-
+env          :: Lens' CheckState Env
+returnType   :: Lens' CheckState Type
 currentScope :: Lens' CheckState (Env' Variable)
-currentScope = lens (\(CheckState _ _ sc _) -> sc) (\(CheckState ev rt _ rm) sc -> CheckState ev rt sc rm)
+currentClass :: Lens' CheckState (Maybe Class)
+env          = lens (\(CheckState ev _ _ _ _ ) -> ev) (\(CheckState _ rt sc rm cc) ev -> CheckState ev rt sc rm cc)
+returnType   = lens (\(CheckState _ rt _ _ _ ) -> rt) (\(CheckState ev _ sc rm cc) rt -> CheckState ev rt sc rm cc)
+currentScope = lens (\(CheckState _ _ sc _ _ ) -> sc) (\(CheckState ev rt _ rm cc) sc -> CheckState ev rt sc rm cc)
+currentClass = lens (\(CheckState _ _  _ _ cc) -> cc) (\(CheckState ev rt sc rm _) cc -> CheckState ev rt sc rm cc)
 
 vEnv :: Lens' CheckState (Env' Variable)
 fEnv :: Lens' CheckState (Env' Function)

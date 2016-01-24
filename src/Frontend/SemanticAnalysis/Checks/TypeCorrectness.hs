@@ -63,8 +63,19 @@ declVar typ (Init ident e1) = do
 
 checkStmtInner :: Tree a -> CheckM (Tree a)
 checkStmtInner x = case x of
-  ClsDef{} -> objectsNotSupportedYet
-  FnDef retType fname args _ -> newScope $ do
+  ClsDefEx ident _ _ -> do
+    cls <- getClass ident
+    currentClass .= Just cls
+    checkStmt x
+  MetDef   (FnDef retType _ args _) -> newScope $ do
+    sequence_ [ declVar typ (NoInit ident) | Arg typ ident <- args]
+    mcls <- use currentClass
+    _ <- case mcls of
+      Just cls -> declVar (getType cls) (NoInit thisIdent)
+      Nothing  -> error "Internal error: class not specified"
+    returnType .= retType
+    checkStmt x
+  FnTopDef (FnDef retType fname args _) -> newScope $ do
     when (fname == Ident "main" && (not.null) args) $
       throwTypeError (InvalidMainSignature args)
     sequence_ [ declVar typ (NoInit ident) | Arg typ ident <- args]
@@ -139,6 +150,16 @@ checkStmtInner x = case x of
 -- Type analysis for expressions --
 -----------------------------------
 
+checkApp :: Function -> [Expr] -> CheckM (Type, [Expr])
+checkApp fun args = do
+  let FunT resType expected = getType fun
+  argTypes <- mapM checkExpr args
+  let (actual, args') = unzip argTypes
+  when (length actual /= length expected) $
+    throwTypeError (InvalidNumberOfArguments actual expected)
+  zipWithM_ (<=!) actual expected
+  return (resType, args')
+
 checkExpr :: Expr -> CheckM (Type, Expr)
 checkExpr e1 = CEContext e1 $$  do
   (t, e) <- checkExprInner e1
@@ -152,36 +173,45 @@ checkExprInner e1@(ELitFalse) = return (BooleanT, e1)
 checkExprInner e1@(EString _) = return ( StringT, e1)
 
 checkExprInner (EApp ident args) = do
-  funType  <- getFunction ident
-  let FunT resType expected = getType funType
-  argTypes <- mapM checkExpr args
-  let (actual, args') = unzip argTypes
-  when (length actual /= length expected) $
-    throwTypeError (InvalidNumberOfArguments actual expected)
-  zipWithM_ (<=!) actual expected
-  return (resType, EApp ident args')
+  fun              <- getFunction ident
+  (retType, args') <- checkApp fun args
+  return (retType, EApp ident args')
 
 checkExprInner e1@(ELVal (LVar ident)) = do
   var <- getVariable ident
   return (getType var, e1)
 
 checkExprInner e1@(ELitNull t1        ) = do
-  unless (isArrayType t1) $ -- TODO Objects test obj type
-    throwCheckError (OtherException "Not an array type")
+  unless (isArrayType t1 || isObjectType t1) $
+    throwCheckError (OtherException "TODO Type has no null value")
   return (t1, e1)
 
 checkExprInner (ELVal (LClsAcc e1 i2)) = do
   (t1', e1') <- checkExpr e1
   case t1' of
-    ArrayT _ -> do
+    ArrayT _     -> do
       when (i2 /= lengthIdent) $
         throwTypeError (FieldOfArray i2)
       return (IntT, (ELVal (LTClsAcc t1' e1' i2)))
-    ClassT _cls     -> objectsNotSupportedYet
+    ClassT clsid -> do
+      cls   <- getClass clsid
+      field <- getField i2 cls
+      return (getType field, (ELVal (LTClsAcc t1' e1' i2)))
     _               -> throwTypeError (FieldOfBuiltIn t1' i2)
 
-checkExprInner (ClsApply _ _ _     ) = objectsNotSupportedYet
-checkExprInner (ClsAlloc _         ) = objectsNotSupportedYet
+checkExprInner (ClsApply e1 i2 args) = do
+  (t1', e1') <- checkExpr e1
+  case t1' of
+    ClassT clsid -> do
+      cls         <- getClass clsid
+      method      <- getMethod i2 cls
+      (rt, args') <- checkApp method args
+      return (rt, ClsApply e1' i2 args')
+    _            -> throwCheckError (OtherException "TODO invalid class apply")
+
+checkExprInner x@(ClsAlloc clsid   ) = do
+  cls <- getClass clsid
+  return (getType cls, x)
 
 checkExprInner (ArrAlloc t1 e2     ) = do
   (t2', e2') <- checkExpr e2
@@ -232,7 +262,7 @@ checkExprInner (EBinOp e1 op e2) = do
         BooleanT -> return (BooleanT, EBinOp e1' EQU_Bool e2')
         StringT  -> return (BooleanT, EBinOp e1' EQU_Str  e2')
         ArrayT _ -> return (BooleanT, EBinOp e1' EQU_Arr  e2')
-        ClassT _ -> objectsNotSupportedYet
+        ClassT _ -> return (BooleanT, EBinOp e1' EQU_Ref  e2')
         _        -> throwTypeError $ InvalidOperandTypes t1 t2
     NE   -> do
       when (t1 /= t2) $
@@ -242,7 +272,7 @@ checkExprInner (EBinOp e1 op e2) = do
         BooleanT -> return (BooleanT, EBinOp e1' NE_Bool e2')
         StringT  -> return (BooleanT, EBinOp e1' NE_Str  e2')
         ArrayT _ -> return (BooleanT, EBinOp e1' NE_Arr  e2')
-        ClassT _ -> objectsNotSupportedYet
+        ClassT _ -> return (BooleanT, EBinOp e1' NE_Ref  e2')
         _        -> throwTypeError $ InvalidOperandTypes t1 t2
     Plus  -> do
        when (t1 /= t2) $

@@ -172,7 +172,7 @@ instance Print Expr where
     TClsApply type_ expr id exprs -> prPrec i 6 (concatD [doc (showString "("), prt 0 type_, doc (showString ")"), prt 6 expr, doc (showString "."), prt 0 id, doc (showString "("), prt 0 exprs, doc (showString ")")])
     ELVal lval -> prPrec i 6 (concatD [prt 0 lval])
     ArrAlloc type_ expr -> prPrec i 5 (concatD [doc (showString "new"), prt 0 type_, doc (showString "["), prt 0 expr, doc (showString "]")])
-    ClsAlloc type_ -> prPrec i 5 (concatD [doc (showString "new"), prt 0 type_])
+    ClsAlloc id -> prPrec i 5 (concatD [doc (showString "new"), prt 0 id])
     Neg expr -> prPrec i 5 (concatD [doc (showString "-"), prt 6 expr])
     Not expr -> prPrec i 5 (concatD [doc (showString "!"), prt 6 expr])
     EMul expr1 op expr2 -> prPrec i 4 (concatD [prt 4 expr1, prt 2 op, prt 5 expr2])

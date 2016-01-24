@@ -56,7 +56,7 @@ transTree t = case t of
   TClsApply type' expr ident exprs -> failure t
   ELVal lval -> failure t
   ArrAlloc type' expr -> failure t
-  ClsAlloc type' -> failure t
+  ClsAlloc ident -> failure t
   Neg expr -> failure t
   Not expr -> failure t
   EMul expr0 op1 expr2 -> failure t
@@ -174,7 +174,7 @@ transExpr t = case t of
   TClsApply type' expr ident exprs -> failure t
   ELVal lval -> failure t
   ArrAlloc type' expr -> failure t
-  ClsAlloc type' -> failure t
+  ClsAlloc ident -> failure t
   Neg expr -> failure t
   Not expr -> failure t
   EMul expr0 op1 expr2 -> failure t

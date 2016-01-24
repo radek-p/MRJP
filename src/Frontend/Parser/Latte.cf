@@ -79,7 +79,7 @@ ELVal.     Expr6 ::= LVal ; -- Instead of those rules:
 -- ClsAccess. Expr6 ::= Expr6 "." Ident ;               -- LVal
 
 ArrAlloc.  Expr5 ::= "new" Type "[" Expr "]" ;
-ClsAlloc.  Expr5 ::= "new" Type ;
+ClsAlloc.  Expr5 ::= "new" Ident ;
 Neg.       Expr5 ::= "-" Expr6 ;
 Not.       Expr5 ::= "!" Expr6 ;
 

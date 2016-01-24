@@ -143,7 +143,7 @@ Expr6 : Integer { Frontend.Parser.AbsLatte.ELitInt $1 }
       | Expr7 { $1 }
 Expr5 :: { Expr }
 Expr5 : 'new' Type '[' Expr ']' { Frontend.Parser.AbsLatte.ArrAlloc $2 $4 }
-      | 'new' Type { Frontend.Parser.AbsLatte.ClsAlloc $2 }
+      | 'new' Ident { Frontend.Parser.AbsLatte.ClsAlloc $2 }
       | '-' Expr6 { Frontend.Parser.AbsLatte.Neg $2 }
       | '!' Expr6 { Frontend.Parser.AbsLatte.Not $2 }
       | Expr6 { $1 }
