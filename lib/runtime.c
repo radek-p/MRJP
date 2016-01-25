@@ -4,10 +4,13 @@
 #include <stdio.h>
 #include "runtime.h"
 
-char *liblatteConcat(const char *s1, const char *s2) {
+const char *liblatteConcat(const char *s1, const char *s2) {
 
     char *result;
     size_t new_length;
+
+    if (s1 == NULL) return s2;
+    if (s2 == NULL) return s1;
 
     new_length = strlen(s1) + strlen(s2) + 1;
     result = malloc(sizeof(char) * new_length);
@@ -23,9 +26,14 @@ void printInt(int i) {
         error();
 }
 
-void printString(char *string) {
-    if (printf("%s\n", string) < 0)
+void printString(const char *string) {
+    if (string == NULL) {
+        if (printf("\n") < 0)
+            error();
+    } else {
+        if (printf("%s\n", string) < 0)
         error();
+    }
 }
 
 void error() {

@@ -4,11 +4,11 @@
 #include <string.h>
 
 // Concatenate two arrays of char
-char *liblatteConcat(const char *s1, const char *s2);
+const char *liblatteConcat(const char *, const char *);
 
 void printInt(int);
 
-void printString(char *);
+void printString(const char *);
 
 void error();
 
