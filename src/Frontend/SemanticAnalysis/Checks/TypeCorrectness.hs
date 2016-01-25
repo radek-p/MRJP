@@ -182,18 +182,19 @@ checkExprInner e1@(ELitTrue ) = return (BooleanT, e1)
 checkExprInner e1@(ELitFalse) = return (BooleanT, e1)
 checkExprInner e1@(EString _) = return ( StringT, e1)
 
-checkExprInner (EApp ident args) = catchError (do
-    mcls <- use currentClass
-    case mcls of
-      Just cls -> do
-        _ <- getMethod ident cls
-        checkExpr (TClsApply (getType cls) (ELVal $ LVar thisIdent) ident args)
-      _ -> throwCheckError (OtherException "Not in class")
-  ) (\_err -> do -- if we failed to find apropriate method we have to search fEnv also
-    fun              <- getFunction ident
-    (retType, args') <- checkApp fun args
-    return (retType, EApp ident args')
-  )
+checkExprInner (EApp ident args) = do
+  mcls <- use currentClass
+
+  methodExists <- case mcls of
+    Just cls -> catchError (getMethod ident cls >> return True) (const $ return False)
+    _        -> return False
+
+  case methodExists of
+    True  -> checkExpr $ ClsApply (ELVal $ LVar thisIdent) ident args
+    False -> do -- if we failed to find apropriate method we have to search fEnv also
+      fun              <- getFunction ident
+      (retType, args') <- checkApp fun args
+      return (retType, EApp ident args')
 
 checkExprInner e1@(ELVal (LVar ident)) = catchError (do
     var <- getVariable ident
@@ -232,7 +233,7 @@ checkExprInner (ClsApply e1 i2 args) = do
       cls         <- getClass clsid
       method      <- getMethod i2 cls
       (rt, args') <- checkApp method args
-      return (rt, ClsApply e1' i2 args')
+      return (rt, TClsApply (getType cls) e1' i2 args')
     _            -> throwCheckError (OtherException "TODO invalid class apply")
 
 checkExprInner x@(ClsAlloc clsid   ) = do
