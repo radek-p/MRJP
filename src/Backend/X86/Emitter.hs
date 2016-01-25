@@ -238,14 +238,19 @@ emitExpr (ArrAlloc _ e2) = do
   emitExpr e2
   popl  eax
   pushl eax
-  addl  (LImm 1) eax -- first entry - array length
-  imull (LImm 4) eax -- multiply the length by the size of array item (4 bytes)
+  addl  (LImm 1)  eax -- first entry - array length
+  imull (LImm 4)  eax -- multiply the length by the size of array item (4 bytes)
+  pushl eax
   pushl eax
   call  (LLbl $ Label "malloc")
-  addl  (LImm 4) esp
+  addl  (LImm 4)  esp
+  pushl (LImm 0)
+  pushl eax
+  call  (LLbl $ Label "memset") -- initialize array with zeros
+  addl  (LImm 12) esp
   popl  ecx
-  movl  ecx (LRel EAX (PointerOffset 0))
-  addl  (LImm 4) eax
+  movl  ecx       (LRel EAX (PointerOffset 0))
+  addl  (LImm 4)  eax
   pushl eax
 
 emitExpr x = error $ "Unsupported expression " ++ show x
