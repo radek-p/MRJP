@@ -24,6 +24,7 @@ data CEType
   | MissingReturnStatement Ident
   | IntegerOutOfBounds     Integer
   | RedefinitionOfBuiltInFunctions [Ident]
+  | ThisField Ident
 
 data TypeError
   = ClassNotFound    Ident
@@ -73,6 +74,7 @@ instance Show CEType where
     IntegerOutOfBounds n       -> "Integer literal  " ++ show n ++ "  is out of bounds."
     RedefinitionOfBuiltInFunctions lst
                                -> "Redefinition of built in function(s): " ++ concat [ printTree i ++ ", " | i <- lst ]
+    ThisField cls              -> "Class " ++ printBoldWhite (printTree cls) ++ printRed " has a field named " ++ printBoldWhite (printTree thisIdent) ++ printRed "."
     _                          -> ""
 
 instance Show TypeError where

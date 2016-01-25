@@ -17,7 +17,7 @@ lengthIdent :: Ident
 lengthIdent = Ident "length"
 
 thisIdent :: Ident
-thisIdent = Ident "this"
+thisIdent = Ident "self"
 
 isArrayType :: Type -> Bool
 isArrayType (ArrayT _) = True

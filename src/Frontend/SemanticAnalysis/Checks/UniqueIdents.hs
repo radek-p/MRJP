@@ -55,6 +55,7 @@ checkClass :: (Ident, [MemberDef]) -> CheckM ()
 checkClass (cident, memdefs)
   | length fields1  /= S.size fields  = throwCheckError $ ClassFieldsNotUnique  cident
   | length methods1 /= S.size methods = throwCheckError $ ClassMethodsNotUnique cident
+  | thisIdent `S.member` fields       = throwCheckError $ ThisField             cident
   | otherwise                         = return ()
   where
     fields1  = [ ident | FieldDef _ items           <- memdefs, FdNoInit ident <- items ]
