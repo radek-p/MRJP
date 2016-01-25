@@ -20,12 +20,12 @@ buildEnv p = do
   fEnv %= (M.union fenv')
   cEnv %= (M.union cenv')
 
-getClassFields :: [MemberDef] -> Env' Variable
+getClassFields :: [MemberDef] -> Env' ClassField
 getClassFields members =
   M.fromList $ do
-    FieldDef t items <- members
-    FdNoInit ident   <- items
-    return (ident, Variable t ident)
+    (FieldDef t items, idx) <- zip members [0..]
+    FdNoInit ident          <- items
+    return (ident, ClassField (Variable t ident) idx)
 
 getFunctionType :: FnDef -> Type
 getFunctionType (FnDef rt _ args _) =
@@ -47,11 +47,22 @@ updateSubclasses :: T.Tree Class -> T.Tree Class
 updateSubclasses (T.Node super subs) =
   let
     newSubs = map (\x -> case x of
-        T.Node (SubClass a _ b c) sc -> T.Node (SubClass a super b c) sc
-        _                            -> error "Internal error"
+        T.Node (SubClass a _ b c d) sc -> T.Node (updateSizes $ SubClass a super b c d) sc
+        _                              -> error "Internal error"
       ) subs
   in
     T.Node super (map updateSubclasses newSubs)
+
+updateSizes :: Class -> Class
+updateSizes Object = Object
+updateSizes (SubClass _ident super _ _fEnv _mEnv) =
+  let
+    sizeDiff  = M.size _fEnv
+    superSize = getSize super
+    size      = superSize + sizeDiff
+    _fEnv'    = fmap (\(ClassField v idx) -> (ClassField v $ idx + superSize)) _fEnv
+  in
+    (SubClass _ident super size _fEnv' _mEnv)
 
 getClasses :: Program -> CheckM (Env' Class)
 getClasses (Program topdefs) = do
@@ -66,9 +77,9 @@ getClasses (Program topdefs) = do
       throwCheckError (OtherException "Internal error - cyclic inherritance check failed")
     where
       e1 = [ (Object, objectClassIdent, []) ]
-      e2 = [ (SubClass name Object (getClassFields members) (getClassMethods members), name, [objectClassIdent]) |
+      e2 = [ (SubClass name Object 0 (getClassFields members) (getClassMethods members), name, [objectClassIdent]) |
                 ClsTopDef (ClsDef   name         members) <- topdefs ]
-      e3 = [ (SubClass name Object (getClassFields members) (getClassMethods members), name, [supName]) |
+      e3 = [ (SubClass name Object 0 (getClassFields members) (getClassMethods members), name, [supName]) |
                 ClsTopDef (ClsDefEx name supName members) <- topdefs ]
       (g, v2n, k2v) = G.graphFromEdges (e1 ++ e2 ++ e3)
       getCls v = let (c, _, _) = v2n v in c

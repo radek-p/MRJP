@@ -20,7 +20,7 @@ checkMO = do
 
 checkMOClass :: Class -> CheckM ()
 checkMOClass Object = return ()
-checkMOClass (SubClass _ super _ mEnv) =
+checkMOClass (SubClass _ super _ _ mEnv) =
   forM_ (M.elems mEnv) $ checkMOMethod super
 
 maybeGetMethod :: Ident -> Class -> CheckM (Maybe Function)

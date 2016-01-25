@@ -31,18 +31,29 @@ data Variable
   = Variable Type Ident
   deriving (Show, Eq)
 
+data ClassField
+  = ClassField Variable Int
+  deriving (Show, Eq)
+
 data Function
   = Function  Type Ident
   deriving (Show, Eq)
 
 data Class
-  = SubClass Ident           -- name
-             Class           -- superclass
-             (Env' Variable) -- fields
-             (Env' Function) -- methods
-  | Object                   -- superclass of all classes
+  = SubClass Ident             -- name
+             Class             -- superclass
+             Int               -- number of fields (including those defined in superclasses)
+             (Env' ClassField) -- fields
+             (Env' Function)   -- methods
+  | Object                     -- superclass of all classes
   deriving (Show, Eq)
 
+class HasSize a where
+  getSize :: a -> Int
+
+instance HasSize Class where
+  getSize Object = 0
+  getSize (SubClass _ _ sz _ _) = sz
 
 class HasIdent a where
   getIdent :: a -> Ident
@@ -59,8 +70,11 @@ instance HasIdent Function where
   getIdent (Function  _ i) = i
 
 instance HasIdent Class where
-  getIdent (SubClass i _ _ _) = i
+  getIdent (SubClass i _ _ _ _) = i
   getIdent (Object)           = objectClassIdent
+
+instance HasIdent ClassField where
+  getIdent (ClassField v _) = getIdent v
 
 
 class HasType a where
@@ -75,6 +89,8 @@ instance HasType Function where
 instance HasType Class where
   getType = ClassT . getIdent
 
+instance HasType ClassField where
+  getType (ClassField v _) = getType v
 
 type Env' a = M.Map Ident a
 type Env = (Env' Variable, Env' Function, Env' Class)

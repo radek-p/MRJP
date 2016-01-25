@@ -84,17 +84,19 @@ getClass ident = do
     Just cls -> return cls
     Nothing  -> throwTypeError $ ClassNotFound ident
 
-getClassItem :: ((Env' Variable, Env' Function) -> Env' c) -> (Ident -> Class -> TypeError) -> Ident -> Class -> Class -> CheckM c
+getClassItem :: ((Env' ClassField, Env' Function) -> Env' c) -> (Ident -> Class -> TypeError) -> Ident -> Class -> Class -> CheckM c
 getClassItem _ err ident orig (Object) =
   throwTypeError $ err ident orig
 
-getClassItem component err ident orig (SubClass _ super fiEnv mEnv) =
+getClassItem component err ident orig (SubClass _ super _ fiEnv mEnv) =
   case M.lookup ident (component (fiEnv, mEnv)) of
     Just method -> return method
     Nothing     -> getClassItem component err ident orig super
 
 getField :: Ident -> Class -> CheckM Variable
-getField ident cls = getClassItem fst FieldNotFound ident cls cls
+getField ident cls = do
+  ClassField v _ <- getClassItem fst FieldNotFound ident cls cls
+  return v
 
 getMethod :: Ident -> Class -> CheckM Function
 getMethod ident cls = getClassItem snd MethodNotFound ident cls cls

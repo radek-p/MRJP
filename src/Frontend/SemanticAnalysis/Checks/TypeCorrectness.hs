@@ -325,7 +325,7 @@ ensureEqual t1 t2 =
 
 isSuperclassOf :: Class -> Class -> Bool
 _  `isSuperclassOf` Object = False
-c1 `isSuperclassOf` (SubClass _ super _ _) =
+c1 `isSuperclassOf` (SubClass _ super _ _ _) =
   c1 == super || c1 `isSuperclassOf` super
 
 compatible :: Type -> Type -> CheckM Bool
