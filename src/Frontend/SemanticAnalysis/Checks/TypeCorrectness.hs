@@ -204,7 +204,7 @@ checkExprInner e1@(ELVal (LVar ident)) = catchError (do
     case mcls of -- If we're checking a method of class, we also have to inspect its fields
       Just cls -> do
         field <- getField ident cls
-        return (getType field, ELVal (LClsAcc (ELVal $ LVar thisIdent) ident))
+        return (getType field, ELVal (LTClsAcc (getType cls) (ELVal $ LVar thisIdent) ident))
       _        -> throwError err
   )
 
