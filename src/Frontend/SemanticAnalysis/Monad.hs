@@ -84,7 +84,7 @@ getClass ident = do
     Just cls -> return cls
     Nothing  -> throwTypeError $ ClassNotFound ident
 
-getClassItem :: ((Env' ClassField, Env' Function) -> Env' c) -> (Ident -> Class -> TypeError) -> Ident -> Class -> Class -> CheckM c
+getClassItem :: ((Env' ClassField, Env' Method) -> Env' c) -> (Ident -> Class -> TypeError) -> Ident -> Class -> Class -> CheckM c
 getClassItem _ err ident orig (Object) =
   throwTypeError $ err ident orig
 
@@ -99,7 +99,9 @@ getField ident cls = do
   return v
 
 getMethod :: Ident -> Class -> CheckM Function
-getMethod ident cls = getClassItem snd MethodNotFound ident cls cls
+getMethod ident cls = do
+  Method m _ _ <- getClassItem snd MethodNotFound ident cls cls
+  return m
 
 getFunction :: Ident -> CheckM Function
 getFunction ident = do

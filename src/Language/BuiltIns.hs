@@ -35,6 +35,10 @@ data ClassField
   = ClassField Variable Int
   deriving (Show, Eq)
 
+data Method
+  = Method Function Int Ident  -- class ident
+  deriving (Show, Eq)
+
 data Function
   = Function  Type Ident
   deriving (Show, Eq)
@@ -44,7 +48,7 @@ data Class
              Class             -- superclass
              Int               -- number of fields (including those defined in superclasses)
              (Env' ClassField) -- fields
-             (Env' Function)   -- methods
+             (Env' Method)     -- methods
   | Object                     -- superclass of all classes
   deriving (Show, Eq)
 
@@ -76,6 +80,9 @@ instance HasIdent Class where
 instance HasIdent ClassField where
   getIdent (ClassField v _) = getIdent v
 
+instance HasIdent Method where
+  getIdent (Method f _ _) = getIdent f
+
 
 class HasType a where
   getType :: a -> Type
@@ -91,6 +98,10 @@ instance HasType Class where
 
 instance HasType ClassField where
   getType (ClassField v _) = getType v
+
+instance HasType Method where
+  getType (Method f _ _) = getType f
+
 
 type Env' a = M.Map Ident a
 type Env = (Env' Variable, Env' Function, Env' Class)

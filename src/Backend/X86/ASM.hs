@@ -3,6 +3,7 @@ module Backend.X86.ASM where
 
 import Control.Lens hiding ( op )
 
+import Language.BuiltIns
 import Backend.X86.DataTypes
 import Frontend.Parser.AbsLatte
 import Utility.PrettyPrinting
@@ -73,7 +74,15 @@ functionLabel ident = Label $ mangleFunction ident
 labelPrefix :: X86M String
 labelPrefix = do
   ident <- use functionName
-  return $ mangleFunction ident
+  clsid <- use className
+  return $ labelPrefix' ident clsid
+
+labelPrefix' :: Ident -> Maybe Ident -> String
+labelPrefix' ident clsid =
+  let fid = mangleFunction ident in
+  case clsid of
+    Just cls -> printTree (getIdent cls) ++ "." ++ fid
+    Nothing  -> fid
 
 placeLabel :: Label -> X86M ()
 placeLabel label =
@@ -88,6 +97,16 @@ getEndLabel :: X86M Label
 getEndLabel = do
   pref <- labelPrefix
   return $ Label $ "." ++ pref ++ ".return"
+
+getVtableLabel :: X86M Label
+getVtableLabel = do
+  mclsid <- use className
+  case mclsid of
+    Just clsid -> return $ getVtableLabel' clsid
+    Nothing    -> error "Internal error"
+
+getVtableLabel' :: Ident -> Label
+getVtableLabel' (Ident idstr) = Label $ "vtable." ++ idstr
 
 newIndexedLabel :: String -> X86M Label
 newIndexedLabel str = do

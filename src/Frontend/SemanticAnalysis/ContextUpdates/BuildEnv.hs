@@ -35,20 +35,20 @@ getFunctionType (FnDef rt _ args _) =
 --args2vars :: [Arg] -> [Variable]
 --args2vars args = [ Variable typ ident | (Arg typ ident) <- args ]
 
-getClassMethods :: [MemberDef] -> Env' Function
-getClassMethods members =
+getClassMethods :: Ident -> [MemberDef] -> Env' Method
+getClassMethods clsident members =
   M.fromList $ do
     MetDef fd@(FnDef _ ident _args _body) <- members
     return (
         ident,
-        Function (getFunctionType fd) ident
+        Method (Function (getFunctionType fd) ident) (-1) clsident
       )
 
 updateSubclasses :: T.Tree Class -> T.Tree Class
 updateSubclasses (T.Node super subs) =
   let
     newSubs = map (\x -> case x of
-        T.Node (SubClass a _ b c d) sc -> T.Node (updateSizes $ SubClass a super b c d) sc
+        T.Node (SubClass a _ b c d) sc -> T.Node (updateMethodNumbers $ updateSizes $ SubClass a super b c d) sc
         _                              -> error "Internal error"
       ) subs
   in
@@ -65,6 +65,34 @@ updateSizes (SubClass _ident super _ _fEnv _mEnv) =
   in
     (SubClass _ident super size _fEnv' _mEnv)
 
+allMethods :: Class -> Env' Method
+allMethods cls =
+  let
+    (newOrRedefined, inherrited) = allMethodsInner cls
+  in
+    M.union newOrRedefined inherrited
+
+allMethodsInner :: Class -> (Env' Method, Env' Method)
+allMethodsInner Object = (M.empty, M.empty)
+allMethodsInner (SubClass _ super _ _ mE) =
+  let
+    superMethods      = allMethods super
+    superMethodsCount = M.size superMethods
+    newMethods        = M.elems $ M.difference mE superMethods
+    inherritedMethods = M.difference superMethods mE
+    redefinedMethods  = M.intersectionWith (\(Method f _ ci) (Method _ idx _) -> Method f idx ci) mE superMethods
+    newMethods'       = M.fromList [ (getIdent f, Method f (superMethodsCount + num) ci) | (Method f _ ci, num) <- zip newMethods [0..]]
+  in
+    (M.union newMethods' redefinedMethods, inherritedMethods)
+
+updateMethodNumbers :: Class -> Class
+updateMethodNumbers Object = Object
+updateMethodNumbers cls@(SubClass a b c d mE2) =
+  let
+    (newOrRedefined, _) = allMethodsInner cls
+  in
+    SubClass a b c d $ M.union newOrRedefined mE2
+
 getClasses :: Program -> CheckM (Env' Class)
 getClasses (Program topdefs) = do
   let trees          = G.components g
@@ -78,9 +106,9 @@ getClasses (Program topdefs) = do
       throwCheckError (OtherException "Internal error - cyclic inherritance check failed")
     where
       e1 = [ (Object, objectClassIdent, []) ]
-      e2 = [ (SubClass name Object 0 (getClassFields members) (getClassMethods members), name, [objectClassIdent]) |
+      e2 = [ (SubClass name Object 0 (getClassFields members) (getClassMethods name members), name, [objectClassIdent]) |
                 ClsTopDef (ClsDef   name         members) <- topdefs ]
-      e3 = [ (SubClass name Object 0 (getClassFields members) (getClassMethods members), name, [supName]) |
+      e3 = [ (SubClass name Object 0 (getClassFields members) (getClassMethods name members), name, [supName]) |
                 ClsTopDef (ClsDefEx name supName members) <- topdefs ]
       (g, v2n, k2v) = G.graphFromEdges (e1 ++ e2 ++ e3)
       getCls v = let (c, _, _) = v2n v in c

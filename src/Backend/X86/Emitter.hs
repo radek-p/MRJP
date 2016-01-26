@@ -3,14 +3,17 @@ module Backend.X86.Emitter where
 
 import Control.Lens hiding ( op )
 import Control.Monad
+import Control.Monad.State
+import qualified Data.Map  as M
+import qualified Data.List as L
 
 import Language.BuiltIns
 import Frontend.Parser.AbsLatte
+import Frontend.SemanticAnalysis.ContextUpdates.BuildEnv
 import Utility.PrettyPrinting
 import Backend.X86.DataTypes
 import Backend.X86.ASM
 import Backend.X86.Helpers
-import qualified Data.Map as M
 
 
 initialState :: Env -> CompilationState
@@ -25,7 +28,7 @@ initialState tenv = CompilationState
   tenv
 
 emitProgram :: Program -> X86M ()
-emitProgram = emitTree
+emitProgram p = emitTree p >> emitVtables
 
 emitTree :: Tree a -> X86M ()
 emitTree x@(Program _) = do
@@ -396,5 +399,30 @@ genJump lTrue lFalse lNext posJump negJump
   | lNext == lTrue  = negJump (LLbl lFalse)
   | lNext == lFalse = posJump (LLbl lTrue )
   | otherwise       = posJump (LLbl lTrue ) >> jmp (LLbl lFalse)
+
+-----------------------
+-- VTable generation --
+-----------------------
+
+emitVtables :: X86M ()
+emitVtables = do
+  tenv <- use env
+  let classes = tenv ^. _3
+  mapM_ emitVtable (M.elems classes)
+
+emitVtable :: Class -> X86M ()
+emitVtable cls = do
+  let methods = M.elems $ allMethods cls
+  let pairs   = L.sortOn snd [ (labelPrefix' (getIdent f) (Just origClsId), idx) | Method f idx origClsId <- methods ]
+  let stmts   = reverse [ SLabel $ getVtableLabel' (getIdent cls) ] ++ (map (\(l,_) -> SDirective $ DLong $ Label l) pairs)
+
+  emittedStmts %= (stmts++)
+
+  liftIO $ putStrLn $ show $ getIdent cls
+  liftIO $ putStrLn $ show pairs
+
+
+
+
 
 

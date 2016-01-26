@@ -25,6 +25,7 @@ instance GasmPrint Instr where
 instance GasmPrint Directive where
   printGasm (DString s) = indent' ".string " ++ show s
   printGasm (DGlobl  s) = ".globl " ++ s
+  printGasm (DLong   l) = indent' ".long " ++ printGasm l
 
 instance GasmPrint Operation where
   printGasm op = case op of

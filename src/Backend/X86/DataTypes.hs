@@ -74,6 +74,7 @@ data Statement
 data Directive
   = DString    String
   | DGlobl     String
+  | DLong      Label
 
 data Instr
   = Instr0A

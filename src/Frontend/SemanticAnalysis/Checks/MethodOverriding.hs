@@ -31,7 +31,7 @@ maybeGetMethod ident cls = catchError (do
     return Nothing
   )
 
-checkMOMethod :: Class -> Function -> CheckM ()
+checkMOMethod :: Class -> Method -> CheckM ()
 checkMOMethod super method = do
   mmethod <- maybeGetMethod (getIdent method) super
   case mmethod of
