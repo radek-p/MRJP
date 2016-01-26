@@ -1,0 +1,34 @@
+Komlilator języka Latte - wersja z rozszerzeniami
+
+     autor: Radosław Piórkowski
+nr indeksu: 335451
+
+
+--------------------------------------
+-- Zaimplementowane funkcjonalności --
+--------------------------------------
+
+W porównaniu z poprzednią wersją projektu, w programie została
+dodana obsługa tablic oraz obiektów z metodami wirtualnymi.
+Poniższa lista zawiera wymienione w treści zadania elementy
+możliwe do zrealizowania dla architektury x86.
+
+Funkcjonalności zaimplementowane oznaczono znakiem "+",
+natomiast "~" oznacza częściową implementację.
+
+  Podstawy:
+
+    [ + ] front-end                           (4)
+    [ + ] back-end x86                       (10)
+    [   ] wykorzystanie rejestrów - dodatkowo (4)
+    [ ~ ] optymalizacje - do 3p
+          Prosta optymalizacja upraszczająca generowany kod GASM
+          (zamiana dwóch nadmiarowych instrukcji na jedną)
+
+  Rozszerzenia:
+
+    [ + ] tablice                             (2)
+    [ + ] struktury                           (2)
+    [ + ] obiekty                 - dodatkowo (4)
+    [ + ] metody wirtualne        - dodatkowo (4)
+    [   ] odśmiecanie                         (2)

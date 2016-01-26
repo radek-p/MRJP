@@ -1,4 +1,4 @@
-Komlilator języka Latte - wersja podstawowa
+Komlilator języka Latte - wersja z rozszerzeniami
 
      autor: Radosław Piórkowski
 nr indeksu: 335451
@@ -11,8 +11,8 @@ A. Kompilacja i uruchamianie programu
 B. Struktora projektu
 -------------------------------------
 
-W obecnym etapie kompilator obsługuje jedynie podstawową wersję języka,
-w najbliższym czasie zostanie dodana obsługa obiektów i tablic.
+Zmiany w projekcie od momentu wysłania kompilatora podstawowej części języka
+opisane są w pliku NEW README.
 
 A. Kompilacja i uruchamianie programu:
 
