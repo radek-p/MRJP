@@ -43,9 +43,6 @@ pushl, popl, jmp, je, jne, neg, call, idivl, jg, jge, jl, jle :: WriteInstr1A
 movl, addl, subl, test, imull, cmpl, andl, orl, leal :: WriteInstr2A
 [movl, addl, subl, test, imull, cmpl, andl, orl, leal] = map emit2A [MovL, AddL, SubL, Test, IMulL, CmpL, AndL, OrL, LeaL]
 
-_NULL :: Pointer
-_NULL = Pointer 0
-
 topComment :: String -> X86M ()
 topComment s =
   emit $ SComment False s

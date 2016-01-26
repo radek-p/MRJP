@@ -54,8 +54,12 @@ processItem x@(NoInit ident) = do
 
 getUniqueIdent :: Ident -> UnifyM Ident
 getUniqueIdent ident@(Ident str) = do
-  idx <- uses idxEnv (\oenv -> M.findWithDefault (error $ "gu not found " ++ show ident ++ " in " ++ show oenv) ident oenv)
-  return (Ident $ str ++ "_#" ++ show idx)
+  inC <- use inClass
+  case inC && ident == thisIdent of
+    True  -> return ident
+    False -> do
+      idx <- uses idxEnv (\oenv -> M.findWithDefault (error $ "gu not found " ++ show ident ++ " in " ++ show oenv) ident oenv)
+      return (Ident $ str ++ "_#" ++ show idx)
 
 unifyVariables' :: Tree a -> UnifyM (Tree a)
 unifyVariables' x = case x of
@@ -70,8 +74,7 @@ unifyVariables' x = case x of
     inClass .= False
     return res
   FnDef _ _ args _ -> newScope $ do
-    q <- use inClass
-    let args' = if q then [thisIdent] else [] ++ [ ident | Arg _ ident <- args ]
+    let args' = [ ident | Arg _ ident <- args ]
     mapM_ declVar args'
     composOpM unifyVariables' x
   Arg t ident -> do

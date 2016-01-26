@@ -30,28 +30,33 @@ initialState tenv = CompilationState
 emitProgram :: Program -> X86M ()
 emitProgram p = emitTree p >> emitVtables
 
-increasePositiveOffset :: PointerOffset -> PointerOffset
-increasePositiveOffset po@(PointerOffset off) =
-  if off > 0 then
-    PointerOffset (off + varSize)
-  else
-    po
+withClass :: Ident -> X86M () -> X86M ()
+withClass clsId a = do
+  className .= Just clsId
+  a
+  className .= Nothing
 
 emitTree :: Tree a -> X86M ()
 emitTree x@(Program _) = do
   preambleStmts %= (SDirective (DGlobl "main"):)
   composOpM_ emitTree x
 
+emitTree x@(ClsDefEx ident _ _) = withClass ident $ composOpM_ emitTree x
+emitTree x@(ClsDef   ident   _) = withClass ident $ composOpM_ emitTree x
+
 emitTree x@(FnDef _ ident _ block) = do
   resetLabelIdx
-  let offsetEnv = getFrameOffsets x
   -- if we're defining a method, we have to make place for the this pointer
   mcls <- use className
-  localOffsetEnv .= case mcls of
-      Just _cls -> (M.insert thisIdent (PointerOffset 8) $ fmap increasePositiveOffset offsetEnv)
-      Nothing   -> offsetEnv
+  let oenv = case mcls of { Just _ -> getFrameOffsets True x; Nothing -> getFrameOffsets False x }
+  localOffsetEnv .= oenv
   functionName   .= ident
   localsOffset <- getStackOffset
+
+  liftIO $ putStrLn $ "\n-----\nEmitting function " ++ show ident
+  liftIO $ putStrLn $ "inClass: " ++ show mcls
+  liftIO $ putStrLn $ "offset env " ++ show oenv
+  liftIO $ putStrLn $ "locals offset " ++ show localsOffset
 
   commentBegin
   getBeginLabel >>= placeLabel
@@ -156,7 +161,7 @@ emitTree x = composOpM_ emitTree x
 
 getLocOf :: LVal -> X86M ()
 getLocOf (LVar ident) = do
-  off <- uses localOffsetEnv (\oenv -> M.findWithDefault (error $ "not found " ++ show ident ++ " in " ++ show oenv) ident oenv)
+  off <- uses localOffsetEnv (\oenv -> M.findWithDefault (error $ "getLocOf: variable not found " ++ show ident ++ " in " ++ show oenv) ident oenv)
   leal   (LFrRel off) eax
   pushl  eax
   -- return (LFrRel off)
@@ -208,7 +213,7 @@ emitExpr (ELitFalse) =
   pushl $ LImm 0
 
 emitExpr (ELitNull{}) =
-  pushl $ LAbs _NULL
+  pushl $ LImm 0
 
 emitExpr (EString s) = do
   label <- declareString s
@@ -317,7 +322,7 @@ emitExpr (TClsApply t1 e2 i3 args) = do
   popl  eax
   pushl eax
   subl  (LImm 4) eax
-  movl  (LRel2 EAX (PointerOffset 0) (LImm idx) 4) eax
+  movl  (LRel EAX (PointerOffset (varSize * idx))) eax
   call  eax
   blankLine
 

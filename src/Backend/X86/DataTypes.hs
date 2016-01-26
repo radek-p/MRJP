@@ -41,11 +41,11 @@ env            = lens (\(CompilationState _ _ _ _ _ _ _ h) -> h) (\(CompilationS
 
 type X86M a = StateT CompilationState (IO) a
 
-data Reg = EAX | EBX | ECX | EDX | ESI | EDI | EBP | EIP | ESP | DL deriving Eq
+data Reg = EAX | EBX | ECX | EDX | ESI | EDI | EBP | EIP | ESP | DL deriving (Eq, Show)
 
 newtype PointerOffset = PointerOffset { getPointerOffset :: Int    } deriving (Eq, Show)
-newtype Pointer       = Pointer       { getPointer       :: Int    } deriving Eq
-newtype Label         = Label         { getLabel         :: String } deriving Eq
+newtype Pointer       = Pointer       { getPointer       :: Int    } deriving (Eq, Show)
+newtype Label         = Label         { getLabel         :: String } deriving (Eq, Show)
 
 data Loc
   = LReg   Reg                   -- CPU registry
@@ -56,7 +56,7 @@ data Loc
   | LImm   Int                   -- Immediate value
   | LLbl   Label                 -- Address pointed by label
   | LStr   Label
-  deriving Eq
+  deriving (Eq, Show)
 
 isImmediate :: Loc -> Bool
 isImmediate LReg{} = True

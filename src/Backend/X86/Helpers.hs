@@ -6,6 +6,7 @@ import Control.Monad.State
 import Control.Lens
 import qualified Data.Map as M
 
+import Language.BuiltIns
 import Frontend.Parser.AbsLatte
 import Backend.X86.DataTypes
 
@@ -21,14 +22,17 @@ varSize = 4
 
 -- Important assumption: variable idents *must* be
 -- unique in function definition Tree
-type AssignState = (LocalOffsetEnv, PointerOffset)
+type AssignState = (LocalOffsetEnv, PointerOffset, Bool)
 type AssignM = StateT AssignState Identity ()
 
 offEnv :: Lens' AssignState LocalOffsetEnv
-offEnv = lens (fst) (\(_, b) a -> (a, b))
+offEnv = _1
 
 curOff :: Lens' AssignState PointerOffset
-curOff = lens (snd) (\(a, _) b -> (a, b))
+curOff = _2
+
+inClass :: Lens' AssignState Bool
+inClass = _3
 
 declArg :: (Ident, PointerOffset) -> AssignM
 declArg (ident, offset) =
@@ -50,13 +54,15 @@ declVar ident = do
   offEnv %= M.insert ident newOffset
   curOff .= newOffset
 
-getFrameOffsets :: FnDef -> LocalOffsetEnv
-getFrameOffsets x = runIdentity (execStateT (assignFrameOffsets x) (M.empty, initialVarOffset)) ^. offEnv
+getFrameOffsets :: Bool -> FnDef -> LocalOffsetEnv
+getFrameOffsets inC x = runIdentity (execStateT (assignFrameOffsets x) (M.empty, initialVarOffset, inC)) ^. offEnv
 
 assignFrameOffsets :: Tree a -> AssignM
 assignFrameOffsets x = case x of
   FnDef _ _ args _ -> do
-    mapM_ declArg (zip [ ident | Arg _ ident <- args] (map PointerOffset [8,8+varSize..]))
+    inC <- use inClass
+    let args' = (if inC then [thisIdent] else []) ++ [ ident | Arg _ ident <- args]
+    mapM_ declArg (zip args' (map PointerOffset [8,8+varSize..]))
     newScope $ composOpM_ assignFrameOffsets x
   Init ident _ ->
     declVar ident
