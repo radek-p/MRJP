@@ -53,10 +53,10 @@ emitTree x@(FnDef _ ident _ block) = do
   functionName   .= ident
   localsOffset <- getStackOffset
 
-  liftIO $ putStrLn $ "\n-----\nEmitting function " ++ show ident
-  liftIO $ putStrLn $ "inClass: " ++ show mcls
-  liftIO $ putStrLn $ "offset env " ++ show oenv
-  liftIO $ putStrLn $ "locals offset " ++ show localsOffset
+  --  liftIO $ putStrLn $ "\n-----\nEmitting function " ++ show ident
+  --  liftIO $ putStrLn $ "inClass: " ++ show mcls
+  --  liftIO $ putStrLn $ "offset env " ++ show oenv
+  --  liftIO $ putStrLn $ "locals offset " ++ show localsOffset
 
   commentBegin
   getBeginLabel >>= placeLabel
@@ -475,8 +475,8 @@ emitVtable cls = do
 
   emittedStmts %= (stmts++)
 
-  liftIO $ putStrLn $ show $ getIdent cls
-  liftIO $ putStrLn $ show pairs
+  --  liftIO $ putStrLn $ show $ getIdent cls
+  --  liftIO $ putStrLn $ show pairs
 
 
 

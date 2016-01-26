@@ -29,7 +29,7 @@ instance GasmPrint Directive where
   printGasm (DGlobl  s) = ".globl " ++ s
   printGasm (DLong   l) = indent' ".long " ++ printGasm l
   printGasm (DArrayHeader name size) = unlines' [
-      ".globl  " ++ name,
+      "\n.globl  " ++ name,
       ".data",
       ".align 4",
       ".type   " ++ name ++ ", @object",
