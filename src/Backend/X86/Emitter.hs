@@ -305,7 +305,7 @@ emitExpr (ClsAlloc ident) = do
   pushl eax
   call  (LLbl $ Label "memset")
   addl  (LImm 12) esp
-  movl  (LLbl lbl) (LRel EAX (PointerOffset 0))
+  movl  (LStr lbl) (LRel EAX (PointerOffset 0))
   addl  (LImm 4)  eax
   pushl eax
 
