@@ -322,8 +322,7 @@ emitExpr (TClsApply t1 e2 i3 args) = do
   popl  eax
   pushl eax
   subl  (LImm 4) eax
-  movl  (LRel EAX (PointerOffset (varSize * idx))) eax
-  icall eax
+  icall (LRel EAX (PointerOffset (varSize * idx)))
   blankLine
 
   addl (LImm argOffset) esp
