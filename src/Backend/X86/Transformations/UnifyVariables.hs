@@ -6,6 +6,7 @@ import Control.Monad.State
 import Control.Lens hiding ( op, Empty )
 import qualified Data.Map as M
 
+import Language.BuiltIns
 import Frontend.Parser.AbsLatte
 
 
@@ -14,17 +15,20 @@ import Frontend.Parser.AbsLatte
 -------------------------------------------------------
 
 type IdxEnv = M.Map Ident Integer
-type UnifyState = (IdxEnv, Integer)
+type UnifyState = (IdxEnv, Integer, Bool)
 type UnifyM a = StateT UnifyState IO a
 
 unifyVariables :: Program -> IO Program
 unifyVariables x = evalStateT (unifyVariables' x) (M.empty, 0)
 
 idxEnv :: Lens' UnifyState IdxEnv
-idxEnv = lens (fst) (\(_, b) a -> (a, b))
+idxEnv = _1
 
 nextIdx :: Lens' UnifyState Integer
-nextIdx = lens (snd) (\(a, _) b -> (a, b))
+nextIdx = _2
+
+inClass :: Lens' UnifyState Bool
+inClass = _3
 
 newScope :: UnifyM a -> UnifyM a
 newScope m = do
@@ -55,8 +59,20 @@ getUniqueIdent ident@(Ident str) = do
 
 unifyVariables' :: Tree a -> UnifyM (Tree a)
 unifyVariables' x = case x of
+  ClsDefEx{} -> do
+    inClass .= True
+    res <- composOpM unifyVariables' x
+    inClass .= False
+    return res
+  ClsDef{} -> do
+    inClass .= True
+    res <- composOpM unifyVariables' x
+    inClass .= False
+    return res
   FnDef _ _ args _ -> newScope $ do
-    mapM_ declVar [ ident | Arg _ ident <- args ]
+    q <- use inClass
+    let args' = if q then [thisIdent] else [] ++ [ ident | Arg _ ident <- args ]
+    mapM_ declVar args'
     composOpM unifyVariables' x
   Arg t ident -> do
     ident' <- getUniqueIdent ident
