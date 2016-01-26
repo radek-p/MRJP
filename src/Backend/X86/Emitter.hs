@@ -181,7 +181,7 @@ getLocOf (LTClsAcc t1 e2 i3) = do
   tenv <- use env
   let ClassT ident = t1
   let classes      = tenv ^. _3
-  let cls          = classes M.! ident
+  let cls          = M.findWithDefault (error $ "Class not found in " ++ show classes) ident classes
   let idx          = getFieldIndex i3 cls
   emitExpr e2
   popl     eax
@@ -288,7 +288,8 @@ emitExpr (ArrAlloc _ e2) = do
 emitExpr (ClsAlloc ident) = do
   tenv <- use env
   let classes    = tenv ^. _3
-  let objectSize = (getSize (classes M.! ident) + 1) * varSize
+  let fieldCount = getSize $ M.findWithDefault (error $ "Class not found in " ++ show classes) ident classes
+  let objectSize = (fieldCount + 1) * varSize
   pushl (LImm objectSize)
   call  (LLbl $ Label "malloc")
   addl  (LImm 4) esp
@@ -303,8 +304,10 @@ emitExpr (ClsAlloc ident) = do
 emitExpr (TClsApply t1 e2 i3 args) = do
   let ClassT clsId   = t1
   tenv <- use env
-  let cls            = (tenv ^. _3) M.! clsId
-  let Method _ idx _ = allMethods cls M.! i3
+  let classes        = tenv ^. _3
+  let cls            = M.findWithDefault (error $ "Class not found in " ++ show classes) clsId classes
+  let methods        = allMethods cls
+  let Method _ idx _ = M.findWithDefault (error $ "Method " ++ show i3 ++ " not found in " ++ show classes) i3 methods
 
   comment $ ">> " ++ printTree i3 ++ ":" ++ show idx ++ "()"
 
@@ -458,9 +461,9 @@ emitVtable cls = do
   let methods = M.elems $ allMethods cls
   let pairs   = L.sortOn snd [ (labelPrefix' (getIdent f) (Just origClsId), idx) | Method f idx origClsId <- methods ]
   let label@(Label lblstr) = getVtableLabel' (getIdent cls)
-  let head   = [ SDirective $ DArrayHeader lblstr (length pairs * varSize), SLabel label ]
+  let aHead  = [ SDirective $ DArrayHeader lblstr (length pairs * varSize), SLabel label ]
   let elems  = map (\(l,_) -> SDirective $ DLong $ Label l) pairs
-  let stmts  = reverse (head ++ elems)
+  let stmts  = reverse (aHead ++ elems)
 
   emittedStmts %= (stmts++)
 
