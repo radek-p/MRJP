@@ -39,7 +39,7 @@ defaultValue t = case t of
   BooleanT -> BooleanV False
   StringT  -> StringV  ""
   VoidT    -> error "Void has no default value"
-  _        -> Dynamic -- TODO object values?
+  _        -> Dynamic
 
 initialState :: CPState
 initialState = CPState [M.empty] Normal

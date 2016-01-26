@@ -43,4 +43,4 @@ ensureMethodsCompatible _sub@(FunT ret1 args1) _super@(FunT ret2 args2) = do
   ret1 <=! ret2                                    -- return type of method in subclass should be subtype of the return type of method defined in superclass
   mapM_ (\(a1, a2) -> a2 <=! a1) (zip args1 args2) -- contravariant types of arguments
 
-ensureMethodsCompatible _ _ = throwCheckError (OtherException "TODO incompatible arg types in overriding of methods")
+ensureMethodsCompatible _ _ = throwCheckError (OtherException "Internal error: Unexpected type in method overriding check.")

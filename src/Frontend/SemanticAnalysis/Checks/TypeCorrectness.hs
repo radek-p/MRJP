@@ -82,7 +82,7 @@ checkStmtInner x = case x of
     mcls <- use currentClass
     _ <- case mcls of
       Just cls -> declVar (getType cls) (NoInit thisIdent)
-      Nothing  -> error "Internal error: class not specified"
+      Nothing  -> error "Internal error: class not specified."
     returnType .= retType
     checkStmt x
   FnTopDef (FnDef retType fname args _) -> newScope $ do
@@ -148,7 +148,7 @@ checkStmtInner x = case x of
         _ <- declVar t1 (NoInit ident)
         return ()
       _              ->
-        throwCheckError (OtherException "TODO Exception")
+        throwTypeError $ ArrayTypeExpected t3'
     checkStmt (For t1 ident e3' s4)
   SExp e1 -> do
     (_, e1') <- checkExpr e1
@@ -210,7 +210,7 @@ checkExprInner e1@(ELVal (LVar ident)) = catchError (do
 
 checkExprInner e1@(ELitNull t1        ) = do
   unless (isArrayType t1 || isObjectType t1) $
-    throwCheckError (OtherException "TODO Type has no null value")
+    throwTypeError (CannotBeNull t1)
   return (t1, e1)
 
 checkExprInner (ELVal (LClsAcc e1 i2)) = do
@@ -234,7 +234,7 @@ checkExprInner (ClsApply e1 i2 args) = do
       method      <- getMethod i2 cls
       (rt, args') <- checkApp method args
       return (rt, TClsApply (getType cls) e1' i2 args')
-    _            -> throwCheckError (OtherException "TODO invalid class apply")
+    _            -> throwTypeError (ClassTypeExpected t1')
 
 checkExprInner x@(ClsAlloc clsid   ) = do
   cls <- getClass clsid
@@ -251,7 +251,7 @@ checkExprInner (ELVal (LArrAcc e1 e2)) = do
   t2' ==! IntT
   case t1' of
     ArrayT t1'elem -> return (t1'elem, ELVal (LArrAcc e1' e2'))
-    _              -> throwCheckError (OtherException "TODO Invvalid array access")
+    _              -> throwTypeError (ArrayTypeExpected t1')
 
 checkExprInner (Neg e1) = do
   (typ, e1') <- checkExpr e1
@@ -308,9 +308,9 @@ checkExprInner (EBinOp e1 op e2) = do
          IntT     -> return (IntT, EBinOp e1' Plus_Int e2')
          StringT  -> return (StringT, EBinOp e1' Plus_Str e2')
          _        -> throwTypeError $ InvalidOperandTypes t1 t2
-    _     -> error "TODO Other?"
+    _     -> error "Internal error: operator not matched."
 
-checkExprInner _ = throwCheckError $ OtherException "Pattern not matched"
+checkExprInner _ = throwCheckError $ OtherException "Internal error: expression not matched."
 
 
 -------------------------
@@ -320,8 +320,7 @@ checkExprInner _ = throwCheckError $ OtherException "Pattern not matched"
 ensureEqual :: Type -> Type -> CheckM ()
 ensureEqual t1 t2 =
   unless (t1 == t2) $
-    throwCheckError (OtherException $ "TODO Types should be equal: " ++ show t1 ++ " " ++ show t2)
-
+    throwTypeError $ TypesNotEqual t1 t2
 
 isSuperclassOf :: Class -> Class -> Bool
 _  `isSuperclassOf` Object = False

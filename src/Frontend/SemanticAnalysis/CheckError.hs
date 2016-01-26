@@ -16,7 +16,6 @@ data CEType
   | ClassMethodsNotUnique Ident
   | MainFunctionNotDefined
   | RestrictedIdentifier Ident
-  | UninitializedVarUsage Ident
   | CyclicInherritance [[Ident]]
   | NestedVariableDeclaration
   | TypeError TypeError
@@ -47,6 +46,10 @@ data TypeError
   | IdentifierAlreadyDefined Ident
   | InvalidMainSignature [Arg]
   | VoidNotAllowed
+  | ArrayTypeExpected Type
+  | ClassTypeExpected Type
+  | CannotBeNull      Type
+  | TypesNotEqual     Type Type
 
 data CEContext
   = forall a. CEContext (Tree a)
@@ -62,7 +65,6 @@ instance Show CEType where
     FunctionNamesNotUnique     -> "Function names are not unique"
     ClassNamesNotUnique        -> "Class names are not unique"
     MainFunctionNotDefined     -> "There is not definition of required function  " ++ printBoldWhite "int main()" ++ printRed "  ."
-    UninitializedVarUsage i    -> "Variable " ++ printTree i ++ "  was not initialized before use" -- TODO Maybe remove.
     CyclicInherritance ids     -> "Cyclic inherritance detected:  " ++
                                   intercalate ";" [ intercalate "," (map printTree cyc) | cyc <- ids ]
     ClassFieldsNotUnique  cls  -> "Identifiers of fields are not unique in definition of class  " ++ printBoldWhite (printTree cls) ++ printRed " ."
@@ -103,6 +105,10 @@ instance Show TypeError where
     InvalidMainSignature args  -> "Invalid signature of function main: " ++ printBoldWhite ("main(" ++ intercalate ", " (map printTree args) ++ ")") ++ printRed "."
     VoidNotAllowed             -> "Void has no value, it cannot be assigned."
     LengthIsNotWritable        -> "Array property 'length' is L-Value, it cannot be assigned."
+    ArrayTypeExpected t1       -> "Array type was expected, but got " ++ printBoldWhite (printTree t1) ++ printRed "."
+    ClassTypeExpected t1       -> "Class type was expected, but got " ++ printBoldWhite (printTree t1) ++ printRed "."
+    CannotBeNull      t1       -> "Wrong type label in (...)null literal, expected array or class type, but got " ++ printBoldWhite (printTree t1) ++ printRed "."
+    TypesNotEqual     t1 t2    -> "Expected type " ++ printBoldWhite (printTree t2) ++ printRed ", but got " ++ printBoldWhite (printTree t1) ++ printRed "."
 
 showFnDef :: FnDef -> String
 showFnDef (FnDef typ ident args _) =
