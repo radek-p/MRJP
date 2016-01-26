@@ -5,6 +5,7 @@ import Control.Lens
 import qualified Data.Map as M
 
 import Frontend.Parser.AbsLatte
+import Language.BuiltIns
 
 
 data CompilationState =
@@ -16,6 +17,7 @@ data CompilationState =
     Ident          -- current function name
     (Maybe Ident)  -- current class name
     Int            -- numbr ot generate other labels
+    Env            -- environment
 
 type LocalOffsetEnv = M.Map Ident PointerOffset
 
@@ -26,14 +28,16 @@ localOffsetEnv :: Lens' CompilationState LocalOffsetEnv
 functionName   :: Lens' CompilationState Ident
 className      :: Lens' CompilationState (Maybe Ident)
 nextLabelIdx   :: Lens' CompilationState Int
+env            :: Lens' CompilationState Env
 
-nextStringIdx  = lens (\(CompilationState a _ _ _ _ _ _) -> a) (\(CompilationState _ b c d e f g) a -> CompilationState a b c d e f g)
-emittedStmts   = lens (\(CompilationState _ b _ _ _ _ _) -> b) (\(CompilationState a _ c d e f g) b -> CompilationState a b c d e f g)
-preambleStmts  = lens (\(CompilationState _ _ c _ _ _ _) -> c) (\(CompilationState a b _ d e f g) c -> CompilationState a b c d e f g)
-localOffsetEnv = lens (\(CompilationState _ _ _ d _ _ _) -> d) (\(CompilationState a b c _ e f g) d -> CompilationState a b c d e f g)
-functionName   = lens (\(CompilationState _ _ _ _ e _ _) -> e) (\(CompilationState a b c d _ f g) e -> CompilationState a b c d e f g)
-className      = lens (\(CompilationState _ _ _ _ _ f _) -> f) (\(CompilationState a b c d e _ g) f -> CompilationState a b c d e f g)
-nextLabelIdx   = lens (\(CompilationState _ _ _ _ _ _ g) -> g) (\(CompilationState a b c d e f _) g -> CompilationState a b c d e f g)
+nextStringIdx  = lens (\(CompilationState a _ _ _ _ _ _ _) -> a) (\(CompilationState _ b c d e f g h) a -> CompilationState a b c d e f g h)
+emittedStmts   = lens (\(CompilationState _ b _ _ _ _ _ _) -> b) (\(CompilationState a _ c d e f g h) b -> CompilationState a b c d e f g h)
+preambleStmts  = lens (\(CompilationState _ _ c _ _ _ _ _) -> c) (\(CompilationState a b _ d e f g h) c -> CompilationState a b c d e f g h)
+localOffsetEnv = lens (\(CompilationState _ _ _ d _ _ _ _) -> d) (\(CompilationState a b c _ e f g h) d -> CompilationState a b c d e f g h)
+functionName   = lens (\(CompilationState _ _ _ _ e _ _ _) -> e) (\(CompilationState a b c d _ f g h) e -> CompilationState a b c d e f g h)
+className      = lens (\(CompilationState _ _ _ _ _ f _ _) -> f) (\(CompilationState a b c d e _ g h) f -> CompilationState a b c d e f g h)
+nextLabelIdx   = lens (\(CompilationState _ _ _ _ _ _ g _) -> g) (\(CompilationState a b c d e f _ h) g -> CompilationState a b c d e f g h)
+env            = lens (\(CompilationState _ _ _ _ _ _ _ h) -> h) (\(CompilationState a b c d e f g _) h -> CompilationState a b c d e f g h)
 
 type X86M a = StateT CompilationState (IO) a
 

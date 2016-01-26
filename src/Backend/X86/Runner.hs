@@ -4,8 +4,8 @@ module Backend.X86.Runner where
 import Control.Monad.State
 import Control.Lens
 
+import Language.BuiltIns
 import Frontend.Parser.AbsLatte
---import Utility.PrettyPrinting
 import Backend.X86.DataTypes
 import Backend.X86.Emitter
 import Backend.X86.GasmPrint
@@ -19,8 +19,8 @@ import Backend.X86.Transformations.DesugaringOfForLoops
 -- Transform a tree to a string containing a sequence of GASM statements  --
 ----------------------------------------------------------------------------
 
-genASM :: Program -> IO String
-genASM p1 = do
+genASM :: Env -> Program -> IO String
+genASM tenv p1 = do
   liftIO $ putStrLn "[ 0/2 ] Compilation."
 
   -- Preprocessing of program tree
@@ -32,7 +32,7 @@ genASM p1 = do
   --  liftIO $ putStrLn $ indent 8 $ printGreen $ printTree p3
 
   -- Compilation
-  st <- execStateT (emitProgram p3) initialState
+  st <- execStateT (emitProgram p3) (initialState tenv)
 
   let stmts    = reverse $ st ^. emittedStmts
   let preamble = reverse $ st ^. preambleStmts

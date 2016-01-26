@@ -6,8 +6,10 @@ import System.Exit ( exitFailure, exitSuccess )
 import System.IO
 import Control.Monad.Except
 import Control.Monad.State
+import Control.Lens
 
 import Utility.PrettyPrinting
+import Frontend.SemanticAnalysis.Monad
 import Frontend.SemanticAnalysis.Runner
 import Frontend.Parser.ParLatte
 import Frontend.Parser.AbsLatte
@@ -50,11 +52,11 @@ parseProgram programText = do
 compileProgram :: Program -> IO String
 compileProgram tree = do
   checkRes <- runExceptT (runStateT (checkProgram tree) undefined)
-  (tree', _) <- case checkRes of
+  (tree', st) <- case checkRes of
     Left  err -> putStr (show err) >> notifyFail
     Right x   -> return x
 
-  asmCode <- genASM tree'
+  asmCode <- genASM (st ^. env) tree'
   return asmCode
 
 notifySuccess :: IO a

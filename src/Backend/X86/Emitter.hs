@@ -13,8 +13,8 @@ import Backend.X86.Helpers
 import qualified Data.Map as M
 
 
-initialState :: CompilationState
-initialState = CompilationState
+initialState :: Env -> CompilationState
+initialState tenv = CompilationState
   0
   []
   []
@@ -22,6 +22,7 @@ initialState = CompilationState
   (Ident "")
   (Nothing)
   0
+  tenv
 
 emitProgram :: Program -> X86M ()
 emitProgram = emitTree
@@ -155,15 +156,31 @@ getLocOf (LArrAcc e1 e2) = do
 
 getLocOf (LTClsAcc t1 e2 i3) | isArrayType t1 = do
   when (i3 /= lengthIdent) $
-    error "Internal error"      -- arrays ao far have only one field
+    error "Internal error"      -- arrays so far have only one field
   emitExpr e2
   popl     eax
   subl     (LImm 4) eax
   pushl    eax
 
-getLocOf (LTClsAcc {}) = error "Objects are not supported yet"
+getLocOf (LTClsAcc t1 e2 i3) = do
+  tenv <- use env
+  let ClassT ident = t1
+  let classes      = tenv ^. _3
+  let cls          = classes M.! ident
+  let idx          = getFieldIndex i3 cls
+  emitExpr e2
+  popl     eax
+  addl     (LImm $ idx * varSize) eax
+  pushl    eax
 
 getLocOf _ = error "Internal error: wrong LVal type in Emitter:hs"
+
+getFieldIndex :: Ident -> Class -> Int
+getFieldIndex _      Object = error "Internal error: field not found"
+getFieldIndex ident (SubClass _ super _ fEnv _) =
+  case M.lookup ident fEnv of
+    Just (ClassField _ idx) -> idx
+    Nothing                 -> getFieldIndex ident super
 
 emitExpr :: Expr -> X86M ()
 emitExpr (ELitInt n) =
@@ -250,6 +267,21 @@ emitExpr (ArrAlloc _ e2) = do
   addl  (LImm 12) esp
   popl  ecx
   movl  ecx       (LRel EAX (PointerOffset 0))
+  addl  (LImm 4)  eax
+  pushl eax
+
+emitExpr (ClsAlloc ident) = do
+  tenv <- use env
+  let classes    = tenv ^. _3
+  let objectSize = (getSize (classes M.! ident) + 1) * varSize
+  pushl (LImm objectSize)
+  call  (LLbl $ Label "malloc")
+  addl  (LImm 4) esp
+  pushl (LImm objectSize)
+  pushl (LImm 0)
+  pushl eax
+  call  (LLbl $ Label "memset")
+  addl  (LImm 12) esp
   addl  (LImm 4)  eax
   pushl eax
 
