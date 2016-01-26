@@ -22,10 +22,11 @@ buildEnv p = do
 
 getClassFields :: [MemberDef] -> Env' ClassField
 getClassFields members =
-  M.fromList $ do
-    (FieldDef t items, idx) <- zip members [0..]
-    FdNoInit ident          <- items
-    return (ident, ClassField (Variable t ident) idx)
+  let
+    fields  = [ (ident, t) | FieldDef t items <- members, FdNoInit ident   <- items ]
+    fields' = [ (ident, ClassField (Variable t ident) idx) | ((ident, t), idx) <- zip fields [0..] ]
+  in
+    M.fromList fields'
 
 getFunctionType :: FnDef -> Type
 getFunctionType (FnDef rt _ args _) =
