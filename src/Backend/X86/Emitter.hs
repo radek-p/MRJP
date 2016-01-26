@@ -293,8 +293,10 @@ emitExpr (ArrAlloc _ e2) = do
 emitExpr (ClsAlloc ident) = do
   tenv <- use env
   let classes    = tenv ^. _3
-  let fieldCount = getSize $ M.findWithDefault (error $ "Class not found in " ++ show classes) ident classes
+  let cls        = M.findWithDefault (error $ "Class not found in " ++ show classes) ident classes
+  let fieldCount = getSize cls
   let objectSize = (fieldCount + 1) * varSize
+  let lbl        = getVtableLabel' $ getIdent cls
   pushl (LImm objectSize)
   call  (LLbl $ Label "malloc")
   addl  (LImm 4) esp
@@ -303,6 +305,7 @@ emitExpr (ClsAlloc ident) = do
   pushl eax
   call  (LLbl $ Label "memset")
   addl  (LImm 12) esp
+  movl  (LLbl lbl) (LRel EAX (PointerOffset 0))
   addl  (LImm 4)  eax
   pushl eax
 
