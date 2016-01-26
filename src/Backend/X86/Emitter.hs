@@ -156,7 +156,7 @@ emitTree x = composOpM_ emitTree x
 
 getLocOf :: LVal -> X86M ()
 getLocOf (LVar ident) = do
-  off <- uses localOffsetEnv (M.!ident)
+  off <- uses localOffsetEnv (\oenv -> M.findWithDefault (error $ "not found " ++ show ident ++ " in " ++ show oenv) ident oenv)
   leal   (LFrRel off) eax
   pushl  eax
   -- return (LFrRel off)

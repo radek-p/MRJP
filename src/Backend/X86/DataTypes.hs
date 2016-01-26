@@ -43,7 +43,7 @@ type X86M a = StateT CompilationState (IO) a
 
 data Reg = EAX | EBX | ECX | EDX | ESI | EDI | EBP | EIP | ESP | DL deriving Eq
 
-newtype PointerOffset = PointerOffset { getPointerOffset :: Int    } deriving Eq
+newtype PointerOffset = PointerOffset { getPointerOffset :: Int    } deriving (Eq, Show)
 newtype Pointer       = Pointer       { getPointer       :: Int    } deriving Eq
 newtype Label         = Label         { getLabel         :: String } deriving Eq
 
