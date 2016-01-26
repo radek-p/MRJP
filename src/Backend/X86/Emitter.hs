@@ -150,7 +150,7 @@ emitTree (While e1 s1) = do
 
   placeLabel lEnd
 
-emitTree (For{}) = error "For loops should be changed to whiles"
+emitTree (For{}) = error "Internal error: For loops should be changed to whiles"
 
 emitTree (SExp e1) = do
   emitExpr e1
@@ -161,7 +161,7 @@ emitTree x = composOpM_ emitTree x
 
 getLocOf :: LVal -> X86M ()
 getLocOf (LVar ident) = do
-  off <- uses localOffsetEnv (\oenv -> M.findWithDefault (error $ "getLocOf: variable not found " ++ show ident ++ " in " ++ show oenv) ident oenv)
+  off <- uses localOffsetEnv (\oenv -> M.findWithDefault (error $ "Internal error: variable not found " ++ show ident ++ " in " ++ show oenv) ident oenv)
   leal   (LFrRel off) eax
   pushl  eax
   -- return (LFrRel off)
@@ -176,7 +176,7 @@ getLocOf (LArrAcc e1 e2) = do
 
 getLocOf (LTClsAcc t1 e2 i3) | isArrayType t1 = do
   when (i3 /= lengthIdent) $
-    error "Internal error"      -- arrays so far have only one field
+    error "Internal error: arrays should have only length field."      -- arrays so far have only one field
   emitExpr e2
   popl     eax
   subl     (LImm 4) eax
@@ -186,7 +186,7 @@ getLocOf (LTClsAcc t1 e2 i3) = do
   tenv <- use env
   let ClassT ident = t1
   let classes      = tenv ^. _3
-  let cls          = M.findWithDefault (error $ "Class not found in " ++ show classes) ident classes
+  let cls          = M.findWithDefault (error $ "Internal error: Class not found in " ++ show classes) ident classes
   let idx          = getFieldIndex i3 cls
   emitExpr e2
   popl     eax
@@ -269,7 +269,7 @@ emitExpr x@(EBinOp e1 op e2) = case op of
       EQU_Bool, NE_Bool, EQU_Arr, NE_Arr, EQU_Ref, NE_Ref, LTH, LE, GTH, GE, AND, OR])
         -> storeBoolean 1 0 x
 
-  _        -> error $ "Unsupported operator " ++ show op
+  _        -> error $ "Internal error: Unsupported operator " ++ show op
 
 emitExpr (ArrAlloc _ e2) = do
   emitExpr e2
@@ -293,7 +293,7 @@ emitExpr (ArrAlloc _ e2) = do
 emitExpr (ClsAlloc ident) = do
   tenv <- use env
   let classes    = tenv ^. _3
-  let cls        = M.findWithDefault (error $ "Class not found in " ++ show classes) ident classes
+  let cls        = M.findWithDefault (error $ "Internal error: Class not found in " ++ show classes) ident classes
   let fieldCount = getSize cls
   let objectSize = (fieldCount + 1) * varSize
   let lbl        = getVtableLabel' $ getIdent cls
@@ -313,9 +313,9 @@ emitExpr (TClsApply t1 e2 i3 args) = do
   let ClassT clsId   = t1
   tenv <- use env
   let classes        = tenv ^. _3
-  let cls            = M.findWithDefault (error $ "Class not found in " ++ show classes) clsId classes
+  let cls            = M.findWithDefault (error $ "Internal error: Class not found in " ++ show classes) clsId classes
   let methods        = allMethods cls
-  let Method _ idx _ = M.findWithDefault (error $ "Method " ++ show i3 ++ " not found in " ++ show classes) i3 methods
+  let Method _ idx _ = M.findWithDefault (error $ "Internal error: Method " ++ show i3 ++ " not found in " ++ show classes) i3 methods
 
   comment $ ">> " ++ printTree i3 ++ ":" ++ show idx ++ "()"
 
@@ -342,7 +342,7 @@ emitExpr (TClsApply t1 e2 i3 args) = do
       popl eax
       movl eax argloc
 
-emitExpr x = error $ "Unsupported expression " ++ show x
+emitExpr x = error $ "Internal error: Unsupported expression " ++ show x
 
 storeBoolean :: Int -> Int -> Expr -> X86M ()
 storeBoolean vTrue vFalse e1 = do
@@ -372,9 +372,9 @@ emitIntOp (EBinOp e1 op e2) = do
     Times    ->        imull ecx eax  >> pushl eax
     Div      -> cdq >> idivl ecx      >> pushl eax
     Mod      -> cdq >> idivl ecx      >> pushl edx
-    _        -> error "Int op was expected"
+    _        -> error "Internal error: Int op was expected"
 
-emitIntOp _ = error "EBinOp was expected"
+emitIntOp _ = error "Internal error: EBinOp was expected"
 
 -- Adapted from slides for the lecture
 emitBooleanExpr :: Expr -> Label -> Label -> Label -> X86M ()
@@ -396,7 +396,7 @@ emitBooleanExpr (EBinOp e1 op e2) lTrue lFalse lNext = do
     GE       -> comparison jge   jl
     AND      -> lAnd
     OR       -> lOr
-    _        -> error "Boolean op was expected"
+    _        -> error "Internal error: Boolean op was expected"
   where
     loadValues :: X86M ()
     loadValues = do

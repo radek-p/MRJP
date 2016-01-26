@@ -58,7 +58,7 @@ getUniqueIdent ident@(Ident str) = do
   case inC && ident == thisIdent of
     True  -> return ident
     False -> do
-      idx <- uses idxEnv (\oenv -> M.findWithDefault (error $ "gu not found " ++ show ident ++ " in " ++ show oenv) ident oenv)
+      idx <- uses idxEnv (\oenv -> M.findWithDefault (error $ "Internal error: not found " ++ show ident ++ " in " ++ show oenv) ident oenv)
       return (Ident $ str ++ "_#" ++ show idx)
 
 unifyVariables' :: Tree a -> UnifyM (Tree a)
