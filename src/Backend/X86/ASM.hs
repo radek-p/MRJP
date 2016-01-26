@@ -36,9 +36,9 @@ esp, ebp, eax, ebx, ecx, edx, dl :: Loc
 ret, cdq :: WriteInstr0A
 [ret, cdq] = map emit0A [Ret_, Cdq]
 
-pushl, popl, jmp, je, jne, neg, call, idivl, jg, jge, jl, jle :: WriteInstr1A
-[pushl, popl, jmp, je, jne, neg, call, idivl, jg, jge, jl, jle] =
-  map emit1A [PushL, PopL, Jmp, Je, Jne, Neg_, Call, IDivL, JG, JGE, JL, JLE]
+pushl, popl, jmp, je, jne, neg, call, idivl, jg, jge, jl, jle, icall :: WriteInstr1A
+[pushl, popl, jmp, je, jne, neg, call, idivl, jg, jge, jl, jle, icall] =
+  map emit1A [PushL, PopL, Jmp, Je, Jne, Neg_, Call, IDivL, JG, JGE, JL, JLE, IndirectCall]
 
 movl, addl, subl, test, imull, cmpl, andl, orl, leal :: WriteInstr2A
 [movl, addl, subl, test, imull, cmpl, andl, orl, leal] = map emit2A [MovL, AddL, SubL, Test, IMulL, CmpL, AndL, OrL, LeaL]

@@ -105,4 +105,5 @@ data Operation
   | AndL
   | OrL
   | LeaL
+  | IndirectCall
   | Jne | Jmp | Je  | JG  | JGE | JL  | JLE

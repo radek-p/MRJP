@@ -17,6 +17,8 @@ instance GasmPrint Statement where
 instance GasmPrint Instr where
   printGasm (Instr0A op)       =
     (printGasm op)
+  printGasm (Instr1A IndirectCall l1) =
+    align (printGasm IndirectCall) ++ "  *" ++ printGasm l1
   printGasm (Instr1A op l1)    =
     align (printGasm op) ++ "  " ++ (printGasm l1)
   printGasm (Instr2A op l1 l2) =
@@ -59,6 +61,7 @@ instance GasmPrint Operation where
     AndL  -> "andl"
     OrL   -> "orl"
     LeaL  -> "leal"
+    IndirectCall -> "call"
 
 instance GasmPrint Reg where
   printGasm r = "%" ++ case r of
