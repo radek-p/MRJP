@@ -30,6 +30,13 @@ initialState tenv = CompilationState
 emitProgram :: Program -> X86M ()
 emitProgram p = emitTree p >> emitVtables
 
+increasePositiveOffset :: PointerOffset -> PointerOffset
+increasePositiveOffset po@(PointerOffset off) =
+  if off > 0 then
+    PointerOffset (off + varSize)
+  else
+    po
+
 emitTree :: Tree a -> X86M ()
 emitTree x@(Program _) = do
   preambleStmts %= (SDirective (DGlobl "main"):)
@@ -37,7 +44,12 @@ emitTree x@(Program _) = do
 
 emitTree x@(FnDef _ ident _ block) = do
   resetLabelIdx
-  localOffsetEnv .= getFrameOffsets x
+  let offsetEnv = getFrameOffsets x
+  -- if we're defining a method, we have to make place for the this pointer
+  mcls <- use className
+  localOffsetEnv .= case mcls of
+      Just _cls -> (M.insert thisIdent (PointerOffset 8) $ fmap increasePositiveOffset offsetEnv)
+      Nothing   -> offsetEnv
   functionName   .= ident
   localsOffset <- getStackOffset
 
@@ -154,7 +166,7 @@ getLocOf (LArrAcc e1 e2) = do
   emitExpr e2
   popl     ecx      -- array index
   popl     eax      -- pointer to array returned by e1
-  leal     (LRel2 EAX (PointerOffset 0) ECX 4) eax
+  leal     (LRel2 EAX (PointerOffset 0) ecx 4) eax
   pushl    eax
 
 getLocOf (LTClsAcc t1 e2 i3) | isArrayType t1 = do
@@ -249,7 +261,7 @@ emitExpr x@(EBinOp e1 op e2) = case op of
 
   _ | (any (op==)
       [EQU_Str, NE_Str, EQU_Int, NE_Int,
-      EQU_Bool, NE_Bool, LTH, LE, GTH, GE, AND, OR])
+      EQU_Bool, NE_Bool, EQU_Arr, NE_Arr, EQU_Ref, NE_Ref, LTH, LE, GTH, GE, AND, OR])
         -> storeBoolean 1 0 x
 
   _        -> error $ "Unsupported operator " ++ show op
@@ -287,6 +299,37 @@ emitExpr (ClsAlloc ident) = do
   addl  (LImm 12) esp
   addl  (LImm 4)  eax
   pushl eax
+
+emitExpr (TClsApply t1 e2 i3 args) = do
+  let ClassT clsId   = t1
+  tenv <- use env
+  let cls            = (tenv ^. _3) M.! clsId
+  let Method _ idx _ = allMethods cls M.! i3
+
+  comment $ ">> " ++ printTree i3 ++ ":" ++ show idx ++ "()"
+
+  subl (LImm argOffset) esp
+
+  mapM_ computeArg $ zip [0..] args'
+  popl  eax
+  pushl eax
+  subl  (LImm 4) eax
+  movl  (LRel2 EAX (PointerOffset 0) (LImm idx) 4) eax
+  call  eax
+  blankLine
+
+  addl (LImm argOffset) esp
+  comment $ "<< " ++ printTree i3 ++ ":" ++ show idx ++ "()"
+
+  pushl eax
+  where
+    args' = e2 : args
+    argOffset = length args' * varSize
+    computeArg (n, e1) = do
+      let argloc = LRel ESP $ PointerOffset (n * varSize)
+      emitExpr e1
+      popl eax
+      movl eax argloc
 
 emitExpr x = error $ "Unsupported expression " ++ show x
 

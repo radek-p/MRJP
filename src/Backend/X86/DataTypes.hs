@@ -52,7 +52,7 @@ data Loc
   | LFrRel PointerOffset         -- Address relative to %ebp
   | LAbs   Pointer               -- Absolute address
   | LRel   Reg PointerOffset     -- Absolute + offset (used for class field access)
-  | LRel2  Reg PointerOffset Reg Int -- Absolute: offset(register, index, size)
+  | LRel2  Reg PointerOffset Loc Int -- Absolute: offset(register, index, size)
   | LImm   Int                   -- Immediate value
   | LLbl   Label                 -- Address pointed by label
   | LStr   Label
