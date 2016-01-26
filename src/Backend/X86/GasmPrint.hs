@@ -26,6 +26,13 @@ instance GasmPrint Directive where
   printGasm (DString s) = indent' ".string " ++ show s
   printGasm (DGlobl  s) = ".globl " ++ s
   printGasm (DLong   l) = indent' ".long " ++ printGasm l
+  printGasm (DArrayHeader name size) = unlines' [
+      ".globl  " ++ name,
+      ".data",
+      ".align 4",
+      ".type   " ++ name ++ ", @object",
+      ".size   " ++ name ++ ", " ++ show size
+    ]
 
 instance GasmPrint Operation where
   printGasm op = case op of

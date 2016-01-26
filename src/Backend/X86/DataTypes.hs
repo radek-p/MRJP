@@ -75,6 +75,7 @@ data Directive
   = DString    String
   | DGlobl     String
   | DLong      Label
+  | DArrayHeader String Int
 
 data Instr
   = Instr0A

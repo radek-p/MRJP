@@ -457,7 +457,10 @@ emitVtable :: Class -> X86M ()
 emitVtable cls = do
   let methods = M.elems $ allMethods cls
   let pairs   = L.sortOn snd [ (labelPrefix' (getIdent f) (Just origClsId), idx) | Method f idx origClsId <- methods ]
-  let stmts   = reverse [ SLabel $ getVtableLabel' (getIdent cls) ] ++ (map (\(l,_) -> SDirective $ DLong $ Label l) pairs)
+  let label@(Label lblstr) = getVtableLabel' (getIdent cls)
+  let head   = [ SDirective $ DArrayHeader lblstr (length pairs * varSize), SLabel label ]
+  let elems  = map (\(l,_) -> SDirective $ DLong $ Label l) pairs
+  let stmts  = reverse (head ++ elems)
 
   emittedStmts %= (stmts++)
 
