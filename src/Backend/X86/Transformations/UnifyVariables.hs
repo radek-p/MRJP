@@ -19,7 +19,7 @@ type UnifyState = (IdxEnv, Integer, Bool)
 type UnifyM a = StateT UnifyState IO a
 
 unifyVariables :: Program -> IO Program
-unifyVariables x = evalStateT (unifyVariables' x) (M.empty, 0)
+unifyVariables x = evalStateT (unifyVariables' x) (M.empty, 0, False)
 
 idxEnv :: Lens' UnifyState IdxEnv
 idxEnv = _1
